@@ -91,6 +91,20 @@ python -m pip check
 
 Em uma nova sessão do terminal, ative novamente o ambiente com `source .venv/bin/activate`. Para sair dele, use `deactivate`.
 
+### Comandos com Makefile
+
+Com `make` disponível, execute na raiz do projeto:
+
+| Comando | Ação |
+|---|---|
+| `make install` | Instalar `requirements.txt` |
+| `make install-dev` | Instalar `requirements-dev.txt` |
+| `make run` | Iniciar a API com Uvicorn e `--reload` |
+| `make test` | Executar os testes com Pytest |
+| `make check` | Verificar dependências com `pip check` |
+
+O [Makefile](Makefile) usa `PYTHON ?= python`: por padrão, utiliza o interpretador `python` do ambiente ativo. Ative a `.venv` antes de executar os comandos ou selecione o interpretador explicitamente, por exemplo: `make test PYTHON=.venv/bin/python`. Os comandos diretos documentados neste README continuam disponíveis.
+
 ## Execução e banco de dados
 
 Com o ambiente ativado, execute na raiz:
@@ -252,7 +266,9 @@ Para demonstrar HTTP 422, tente criar uma tarefa com `{"titulo":"ab"}`. A respos
 | `OPENAI_TIMEOUT_SECONDS` | `10` | Número positivo e finito para timeout do transporte |
 | `OPENAI_BASE_URL` | Padrão do SDK | Sobrescreve o endereço do provedor se definida; normalmente deve permanecer ausente |
 
-**O projeto não carrega `.env` automaticamente.** Criar um arquivo `.env` não basta: as variáveis devem estar no ambiente do processo que inicia o Uvicorn. Não há dependência de dotenv ou arquivo `.env.example` nesta entrega.
+O arquivo [.env.example](.env.example) documenta `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` e `OPENAI_TIMEOUT_SECONDS`, sem credenciais reais. O exemplo de `DATABASE_URL` está comentado para preservar o padrão calculado pela aplicação; a chave está vazia, com modelo `gpt-5-nano` e timeout de 10 segundos.
+
+**O projeto não carrega `.env` automaticamente.** Copiar `.env.example` para `.env` não ativa a configuração: as variáveis devem estar no ambiente do processo que inicia o Uvicorn. Não há dependência de dotenv, e o Makefile também não carrega `.env`.
 
 Para configurar no Bash sem escrever a chave no comando do histórico:
 
@@ -322,9 +338,9 @@ A assistência no desenvolvimento é distinta da funcionalidade de sugestão: es
 - Uma falha de leitura/refresh após commit pode retornar 500 mesmo com a operação de escrita já confirmada.
 - A classificação por IA não é determinística; o fallback é limitado às palavras-chave documentadas.
 - A prioridade sugerida não é aplicada automaticamente; o usuário decide se deseja utilizá-la ao criar ou atualizar uma tarefa.
-- Não há Makefile, scripts de instalação, pipeline CI ou licença de distribuição definidos nesta entrega.
+- Não há pipeline CI ou licença de distribuição definidos nesta entrega.
 
-Possíveis melhorias futuras incluem `.env.example` sem segredos, scripts de execução, validação em ambiente limpo, fixação das dependências transitivas, pipeline de testes, definição de licença e versão de entrega. Autenticação, paginação e migrações exigem novas etapas de requisitos e revisão; não fazem parte das funcionalidades atuais.
+Possíveis melhorias futuras incluem validação em ambiente limpo, fixação das dependências transitivas, pipeline de testes, definição de licença e versão de entrega. Autenticação, paginação e migrações exigem novas etapas de requisitos e revisão; não fazem parte das funcionalidades atuais.
 
 ## Roteiro básico de demonstração
 

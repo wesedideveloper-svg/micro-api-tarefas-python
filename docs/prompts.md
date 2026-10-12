@@ -1696,3 +1696,59 @@ python -m pip check
 **Validação humana:** concluída e aprovada. O usuário informou que revisou o Makefile e que está correto, sem necessidade de alterações. Autorizou o registro da Etapa 3.2.3 e o commit exclusivamente de `Makefile` e `docs/prompts.md`, com a mensagem `build: adiciona Makefile para execucao e testes`. A próxima etapa depende de confirmação posterior.
 
 **Refinamentos realizados:** nenhum; o arquivo aprovado permaneceu sem alterações durante a preparação do commit.
+
+## Etapa 3.2.4 — Atualização pontual do README da Unidade V
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** atualizar exclusivamente o README para refletir `.env.example` e Makefile já implementados e versionados, preservando as demais seções e funcionalidades documentadas.
+
+**Prompt original:**
+
+```text
+Vamos iniciar a Etapa 3.2.4 — Atualização pontual do README da Unidade V.
+
+Objetivo: atualizar exclusivamente README.md para refletir os arquivos .env.example e Makefile, já implementados e versionados.
+
+Instruções:
+
+1. Leia o README.md atual.
+2. Confira o conteúdo real de .env.example e Makefile.
+3. Atualize a documentação de configuração para mencionar .env.example e explicar que o projeto não carrega arquivos .env automaticamente.
+4. Documente os comandos disponíveis:
+   - make install
+   - make install-dev
+   - make run
+   - make test
+   - make check
+5. Explique que os comandos make utilizam o interpretador Python do ambiente ativo, podendo ser configurados com PYTHON.
+6. Remova das limitações e melhorias futuras as afirmações de que .env.example e Makefile ainda não existem.
+7. Preserve todas as outras seções, exemplos HTTP, arquitetura e informações sobre testes e IA.
+
+Restrições:
+- Altere exclusivamente README.md.
+- Faça o menor diff possível.
+- Não modifique código Python, testes, Makefile, .env.example, .gitignore ou docs/prompts.md.
+- Não execute instalações, testes ou chamadas reais à OpenAI.
+- Não crie commits, tags ou publique nada no GitHub.
+
+Ao finalizar:
+1. Mostre o diff completo de README.md.
+2. Execute git diff --check.
+3. Execute git status.
+4. Aguarde minha revisão humana antes de qualquer commit.
+```
+
+**Alterações realizadas e resultado:**
+
+- Lidos o README atual, `.env.example` e Makefile antes da edição.
+- Acrescentada uma seção com os cinco comandos do Makefile e suas finalidades, explicando `PYTHON ?= python`, uso do ambiente ativo e seleção explícita com `make test PYTHON=.venv/bin/python`.
+- Documentado `.env.example`, com chave vazia, modelo e timeout padrão, além do exemplo comentado de DATABASE_URL. Reforçado que copiar o arquivo para `.env` não ativa a configuração e que nem a aplicação nem o Makefile carregam `.env` automaticamente.
+- Removidas somente as afirmações desatualizadas sobre ausência de Makefile e `.env.example` e suas referências como melhorias futuras. Preservadas arquitetura, exemplos HTTP, informações de testes e IA e demais seções.
+- O diff completo foi apresentado ao usuário e, a pedido, mostrado novamente como resultado exclusivo de `git diff -- README.md`. `git diff --check` passou e `git status --short` mostrou somente README modificado na implementação.
+- Após aprovação humana, este registro foi acrescentado ao final de `docs/prompts.md`, preservando integralmente seu conteúdo anterior. Executado `git diff --check` antes do commit autorizado.
+- Não foram alterados código Python, testes, dependências, Makefile, .env.example, .gitignore ou funcionalidades. Não foram executados instalações, testes ou chamadas reais à OpenAI, criadas tags ou realizadas publicações no GitHub.
+
+**Validação humana:** concluída e aprovada. O usuário informou que analisou o diff completo e que todas as alterações estão corretas. Autorizou o registro da Etapa 3.2.4 e o commit exclusivamente de `README.md` e `docs/prompts.md`, com a mensagem `docs: atualiza README com Makefile e configuracao de ambiente`. A próxima etapa depende de confirmação posterior.
+
+**Refinamentos realizados:** nenhuma correção foi solicitada na revisão humana; o README aprovado permaneceu sem alterações durante a preparação do commit.
