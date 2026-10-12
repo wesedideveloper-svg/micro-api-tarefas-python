@@ -399,3 +399,194 @@ A implementação e os cenários apresentados foram revisados com auxílio do Ch
 Situação final da Etapa 2.2: aprovada para commit, sem funcionalidades pendentes dentro do escopo definido.
 
 **Refinamentos realizados:** acrescentados dez casos aos testes de schemas e uma asserção aos casos existentes de atualização parcial. Os cenários já cobertos foram reaproveitados, sem duplicação de funções de teste e sem mudança de funcionalidades.
+
+## Etapa 2.3 — Persistência inicial com SQLAlchemy e SQLite
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** configurar a persistência inicial e o modelo tipado Task, com restrições de integridade e testes isolados, sem inicialização automática na aplicação.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.3 do projeto acadêmico micro-api-tarefas-python.
+
+Leia integralmente README.md, AGENTS.md, app/enums.py, app/schemas.py, requirements.txt e docs/prompts.md.
+
+A Etapa 2.2 foi concluída, revisada e registrada no commit efa2e85.
+
+Objetivo: implementar exclusivamente a camada inicial de persistência com SQLAlchemy 2.x e SQLite, mantendo a arquitetura simples, organizada e compatível com Python 3.10.12.
+
+**1. Configuração do banco de dados**
+
+- Criar app/database.py.
+- Configurar o SQLAlchemy 2.x com SQLite.
+- Utilizar uma variável DATABASE_URL configurável, com valor padrão apontando para um arquivo SQLite local do projeto.
+- Configurar engine, sessionmaker e Base declarativa.
+- Preparar uma função get_db() para fornecer e encerrar corretamente as sessões.
+- Não criar conexão ou tabelas como efeito colateral da importação dos módulos.
+- Não adicionar inicialização automática do banco em app/main.py.
+- Garantir que o arquivo SQLite gerado não seja versionado no Git.
+
+**2. Modelo de tarefas**
+
+Criar app/models.py com a classe Task, utilizando SQLAlchemy 2.x e mapeamento tipado com Mapped e mapped_column.
+
+Campos:
+
+- id: inteiro, chave primária, gerado automaticamente.
+- titulo: string obrigatória, máximo de 150 caracteres.
+- descricao: texto opcional, máximo de 2.000 caracteres.
+- status: obrigatório, padrão "pendente".
+- prioridade: obrigatória, padrão "media".
+
+Reutilizar TaskStatus e TaskPriority definidos em app/enums.py.
+
+A persistência dos enums deve utilizar seus valores textuais ("pendente", "concluida", "baixa", "media", "alta"), e não os nomes dos membros Python.
+
+Adicionar restrições SQLite CHECK para garantir:
+- Valores válidos de status e prioridade.
+- Título não vazio e com tamanho entre 3 e 150 caracteres.
+- Descrição nula ou com até 2.000 caracteres.
+
+Evitar duplicar validações complexas já implementadas nos schemas Pydantic. As restrições do banco devem proteger a integridade dos dados.
+
+**3. Testes automatizados**
+
+Criar tests/test_task_models.py.
+
+Utilizar banco SQLite temporário e isolado para os testes, sem modificar o banco de desenvolvimento.
+
+Testar:
+- Criação da estrutura de tabelas.
+- Persistência e recuperação de uma tarefa.
+- Geração automática do ID.
+- Valores padrão de status e prioridade.
+- Descrição opcional.
+- Persistência dos valores textuais dos enums.
+- Rejeição de status e prioridade inválidos pelo banco.
+- Restrições de título e descrição.
+- Funcionamento das sessões e isolamento dos testes.
+
+Não criar testes dependentes de dados persistidos anteriormente.
+
+**4. Dependências e documentação**
+
+- Adicionar SQLAlchemy 2.x ao requirements.txt, mantendo compatibilidade com Python 3.10.
+- Atualizar docs/prompts.md com o prompt original, arquivos criados, decisões técnicas e resultados reais dos testes.
+- Registrar a validação humana como pendente.
+- Atualizar .gitignore somente se necessário para impedir o versionamento do banco SQLite.
+
+**5. Restrições**
+
+- Não criar Repository ou Service.
+- Não implementar endpoints CRUD.
+- Não modificar app/main.py, app/enums.py ou app/schemas.py.
+- Não implementar integração com IA.
+- Não criar migrações com Alembic nesta etapa.
+- Não alterar README.md ou AGENTS.md.
+- Não realizar commit.
+- Não implementar funcionalidades adicionais.
+
+**6. Validação**
+
+Execute a suíte completa de testes, incluindo:
+- Testes dos modelos SQLAlchemy.
+- Testes dos schemas Pydantic.
+- Testes dos enums.
+- Teste do endpoint /health.
+
+Execute também:
+- pip check
+- git diff --check
+- git status
+
+Ao finalizar, apresente:
+1. Arquivos criados ou alterados.
+2. Código e decisões principais da configuração SQLite e do modelo Task.
+3. Quantidade de testes aprovados e eventuais avisos.
+4. Resultado do git status.
+5. Possíveis riscos ou pontos que exigem revisão humana.
+
+Aguarde minha revisão e aprovação antes de avançar para a próxima etapa.
+```
+
+**Resultado obtido e decisões técnicas:**
+
+- Criado `app/database.py` com `DATABASE_URL` lida do ambiente, padrão SQLite no arquivo `tarefas.db` da raiz, usando caminho absoluto derivado da localização do módulo. Configurados engine, `SessionLocal` com `autoflush=False` e `Base` declarativa.
+- Configurado `check_same_thread=False` para o uso posterior de sessões SQLite nas dependências síncronas do FastAPI. Isso não autoriza compartilhar a mesma sessão entre requisições.
+- `get_db()` fornece uma sessão por chamada e a encerra com gerenciador de contexto, inclusive em caso de erro; não realiza commit automático. O encerramento reverte transações não confirmadas.
+- A criação da engine é lazy: não há abertura de conexão nem criação de tabelas na importação. Nenhuma inicialização foi acrescentada em `app/main.py`; o banco de desenvolvimento não foi criado pelos testes.
+- Criado `app/models.py` com a tabela `tasks` e mapeamento `Mapped`/`mapped_column`. ID inteiro é gerado pelo SQLite; título é obrigatório e descrição é anulável.
+- Enums usam `values_callable`, `native_enum=False` e `create_constraint=True`: armazenam valores textuais e geram restrições CHECK. Status e prioridade têm defaults no ORM e no banco (`pendente` e `media`), protegendo também inserções por SQL direto.
+- Adicionados CHECKs para título com tamanho de 3 a 150 após `trim` do SQLite e máximo de 150 caracteres armazenados; descrição nula ou com até 2.000 caracteres. A normalização completa das entradas permanece nos schemas: o `trim` padrão do SQLite remove espaços comuns nas extremidades, não reproduz integralmente o `strip()` do Python para todos os caracteres de espaço.
+- Criado `tests/test_task_models.py` com 32 casos. Cada caso usa arquivo SQLite próprio em `tmp_path`, cria suas tabelas explicitamente e descarta a engine ao terminar. Incluídos testes de estrutura, recuperação por nova sessão, IDs, defaults ORM e SQL, descrição opcional, todas as combinações dos enums, CHECKs e NOT NULL via SQL direto, limites, encerramento normal e com erro das sessões, rollback de dados não confirmados, isolamento e importação sem conexão em subprocesso.
+- Adicionado `SQLAlchemy==2.0.44` a `requirements.txt` e instalado na `.venv` com `.venv/bin/python -m pip install --no-cache-dir -r requirements.txt`, com acesso de rede. O ambiente utiliza Python 3.10.12.
+- `.gitignore` já contém `*.db`, `*.sqlite` e `*.sqlite3`; não foi alterado. `git check-ignore tarefas.db` confirmou que o arquivo padrão está ignorado. Um caminho personalizado de banco deve conservar uma dessas extensões ou ter regra própria de exclusão.
+
+**Testes e verificações executados:**
+
+- `timeout 30s .venv/bin/python -m pytest -q`, fora da restrição que afetou o TestClient nas etapas anteriores: **146 testes aprovados em 1,68 s**, sendo 32 da persistência, 104 dos schemas, nove dos enums e um de `/health`.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada.
+- `git diff --check`: sem erros.
+- `git status --short` antes da atualização deste registro: `requirements.txt` modificado e `app/database.py`, `app/models.py`, `tests/test_task_models.py` novos. A atualização deste registro também modifica `docs/prompts.md`.
+- Os arquivos protegidos não foram alterados. Nenhum commit foi realizado.
+
+**Validação humana:** concluída. O usuário revisou `app/database.py`, `app/models.py` e `tests/test_task_models.py` com auxílio do ChatGPT. A implementação e os testes foram considerados adequados ao escopo acadêmico. Nenhum defeito obrigatório foi identificado. A revisão complementar resultou em 147 testes aprovados, conforme execução informada pelo Codex. A Etapa 2.3 foi aprovada para commit.
+
+**Refinamentos realizados:** não foram necessárias correções após a primeira execução da suíte completa. A criação explícita das tabelas ficou restrita aos bancos temporários de teste; a inicialização futura do banco de desenvolvimento dependerá de etapa aprovada separadamente.
+
+### Revisão complementar da Etapa 2.3 — Testes de persistência
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** revisar encerramento de sessões, rollback, validação de enums via ORM, isolamento dos bancos temporários e ausência de efeitos colaterais na importação, acrescentando apenas cobertura necessária.
+
+**Prompt original:**
+
+```text
+Antes de finalizar a Etapa 2.3, faça uma revisão complementar de app/database.py, app/models.py e tests/test_task_models.py.
+
+Objetivo: verificar possíveis lacunas na cobertura dos testes de persistência, mantendo a implementação simples.
+
+Verifique especialmente:
+
+1. Se os testes demonstram corretamente o encerramento das sessões criadas por get_db(), tanto no fluxo normal quanto em caso de exceção.
+2. Se o rollback de dados não confirmados está suficientemente coberto.
+3. O comportamento do SQLAlchemy ao persistir valores inválidos de status e prioridade via ORM, diferenciando validação do ORM e restrições CHECK do SQLite.
+4. Se os testes de isolamento realmente utilizam bancos temporários independentes.
+5. Se a importação de app.database e app.models permanece sem abrir conexões ou criar tabelas.
+
+Regras:
+- Reaproveite os testes existentes.
+- Adicione somente os casos que realmente faltarem.
+- Não duplique cenários já cobertos.
+- Não altere app/database.py ou app/models.py sem encontrar um defeito comprovado.
+- Não crie Repository, Service ou endpoints CRUD.
+- Não altere os schemas Pydantic ou enums.
+- Execute a suíte completa de testes.
+- Atualize docs/prompts.md com o prompt original, as alterações e os resultados, mantendo a validação humana final como pendente.
+- Não realize commit.
+
+Ao finalizar, apresente os testes adicionados, eventuais correções e o resultado completo do Pytest.
+
+Aguarde minha aprovação antes de avançar.
+```
+
+O prompt foi acompanhado de uma referência ao arquivo `tests/test_task_models.py` no editor.
+
+**Resultado obtido:**
+
+- A cobertura existente já comprovava devolução da conexão e rollback de dados inseridos por `flush()` sem commit, tanto no encerramento normal de `get_db()` quanto ao propagar uma exceção. Esse mesmo teste foi reforçado com um spy que executa o `Session.close()` real e comprova sua chamada única, além de verificar ausência de transação ativa e identity map vazio após o encerramento.
+- Acrescentados dois casos parametrizados em `test_invalid_enum_via_orm_is_rejected_by_sqlite_check`, para status e prioridade. A configuração atual não ativa `validate_strings=True`: atribuir uma string inválida ao modelo não gera validação antecipada. O `flush()` envia a inserção ao SQLite, que rejeita o valor com `IntegrityError`; os testes verificam a mensagem de CHECK e o nome da restrição. Após rollback explícito, confirmam ausência de tarefa persistida.
+- Os testes existentes de SQL direto permanecem cobrindo CHECKs e NOT NULL sem interferência do ORM; os novos casos exercitam um caminho diferente, de inserção via ORM.
+- Substituídos os dois casos parametrizados de isolamento por um único teste que demonstra diretamente dois arquivos SQLite temporários diferentes: confirma o caminho do banco da fixture, insere dados em ambos e verifica que cada um contém apenas sua própria tarefa. As engines são descartadas ao término.
+- Reaproveitado o teste de importação em subprocesso, acrescentando uma proteção que falha caso `MetaData.create_all()` seja chamado. Mantida a proteção contra abertura de conexão e a verificação de que o arquivo SQLite não foi criado.
+- Não foi encontrado defeito comprovado: `app/database.py` e `app/models.py` não foram alterados nesta revisão. Apenas `tests/test_task_models.py` e este documento foram alterados nesta solicitação.
+- Executado `timeout 30s .venv/bin/python -m pytest -q` fora da restrição que afetou o TestClient anteriormente: **147 testes aprovados em 1,79 s**, sendo 33 casos da persistência, 104 dos schemas, nove dos enums e um de `/health`.
+- Emitido um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas. Nenhum commit foi realizado.
+
+**Validação humana:** concluída. `app/database.py`, `app/models.py` e `tests/test_task_models.py` foram revisados com auxílio do ChatGPT. A implementação e os testes, incluindo os reforços da revisão complementar, foram considerados adequados ao escopo acadêmico. Nenhum defeito obrigatório foi identificado. A revisão complementar resultou em 147 testes aprovados, conforme execução informada pelo Codex. A Etapa 2.3 e sua revisão complementar foram aprovadas para commit.
+
+**Refinamentos realizados:** dois novos casos para enums inválidos via ORM; reforço dos testes existentes de sessão e importação; substituição de dois casos de isolamento por uma demonstração direta de bancos independentes. O total passou de 146 para 147 testes, sem alteração funcional da implementação.
