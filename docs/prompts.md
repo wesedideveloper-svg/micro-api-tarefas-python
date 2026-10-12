@@ -590,3 +590,143 @@ O prompt foi acompanhado de uma referência ao arquivo `tests/test_task_models.p
 **Validação humana:** concluída. `app/database.py`, `app/models.py` e `tests/test_task_models.py` foram revisados com auxílio do ChatGPT. A implementação e os testes, incluindo os reforços da revisão complementar, foram considerados adequados ao escopo acadêmico. Nenhum defeito obrigatório foi identificado. A revisão complementar resultou em 147 testes aprovados, conforme execução informada pelo Codex. A Etapa 2.3 e sua revisão complementar foram aprovadas para commit.
 
 **Refinamentos realizados:** dois novos casos para enums inválidos via ORM; reforço dos testes existentes de sessão e importação; substituição de dois casos de isolamento por uma demonstração direta de bancos independentes. O total passou de 146 para 147 testes, sem alteração funcional da implementação.
+
+## Etapa 2.4 — Repository de tarefas
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** implementar exclusivamente as operações de persistência de tarefas, usando a sessão fornecida pelo chamador e preservando seu controle sobre as transações.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.4 do projeto acadêmico micro-api-tarefas-python.
+
+Leia integralmente README.md, AGENTS.md, docs/prompts.md, app/database.py, app/models.py, app/enums.py e app/schemas.py antes de implementar.
+
+A Etapa 2.3 foi concluída, revisada e registrada no commit 8fe44e3.
+
+**Objetivo:** implementar exclusivamente a camada Repository para operações de persistência de tarefas com SQLAlchemy 2.x e SQLite, mantendo compatibilidade com Python 3.10.12.
+
+### 1. Estrutura
+
+Criar:
+- app/repositories/__init__.py
+- app/repositories/task_repository.py
+- tests/test_task_repository.py
+
+### 2. Repository
+
+Implementar a classe TaskRepository, recebendo uma Session do SQLAlchemy pelo construtor.
+
+Disponibilizar as operações:
+
+- create: inserir uma tarefa a partir dos dados validados de TaskCreate e retornar o modelo Task.
+- get_by_id: consultar pelo ID e retornar Task ou None.
+- list_all: listar tarefas, com ordenação determinística por ID crescente.
+- update: atualizar uma tarefa existente usando TaskUpdate, respeitando model_dump(exclude_unset=True), inclusive descricao=None para remover a descrição.
+- delete: excluir uma tarefa existente.
+
+Regras importantes:
+
+- Não criar engine ou SessionLocal dentro do Repository.
+- Não abrir nem fechar a sessão recebida.
+- Não realizar commit ou rollback dentro do Repository; o controle da transação ficará para a futura camada Service.
+- Utilizar session.add(), session.flush(), session.get(), select() e session.delete() quando apropriado.
+- Não retornar schemas HTTP; retornar modelos SQLAlchemy ou resultados simples.
+- Não implementar regras de negócio nesta camada.
+- Não criar abstrações genéricas desnecessárias.
+- Não implementar paginação, filtros ou busca por título nesta etapa.
+
+### 3. Testes
+
+Criar testes automatizados utilizando bancos SQLite temporários e independentes.
+
+Validar:
+
+1. Criação de tarefa e geração de ID após flush.
+2. Aplicação dos valores padrão.
+3. Consulta por ID existente e inexistente.
+4. Listagem vazia e listagem ordenada por ID crescente.
+5. Atualização parcial de título, descrição, status e prioridade.
+6. Distinção entre campo omitido e descricao=None.
+7. Exclusão de tarefa existente.
+8. Comportamento para tarefa inexistente, conforme o contrato escolhido e documentado.
+9. Ausência de commit automático: verificar que alterações não confirmadas são revertidas ao encerrar a sessão.
+10. Persistência após commit explícito feito pelo teste.
+11. Isolamento entre os bancos de teste.
+
+Não duplicar desnecessariamente os testes dos schemas Pydantic ou das restrições do modelo SQLAlchemy já implementados nas etapas anteriores.
+
+### 4. Restrições
+
+- Não modificar app/main.py, app/database.py, app/models.py, app/enums.py ou app/schemas.py sem encontrar um defeito comprovado e justificar previamente.
+- Não implementar Service ou endpoints CRUD.
+- Não criar inicialização automática do banco.
+- Não integrar IA.
+- Não adicionar dependências sem necessidade.
+- Não alterar README.md ou AGENTS.md.
+- Não realizar commit.
+- Não implementar funcionalidades fora do escopo.
+
+### 5. Documentação
+
+Atualizar docs/prompts.md com:
+
+- Prompt original desta etapa.
+- Arquivos criados.
+- Decisões técnicas.
+- Resultados reais dos testes.
+- Validação humana pendente.
+- Refinamentos realizados, se houver.
+
+### 6. Verificações
+
+Execute:
+
+- A suíte completa de testes com Pytest.
+- pip check.
+- git diff --check.
+- git status.
+
+Ao finalizar, apresente:
+
+1. Arquivos criados ou modificados.
+2. Código e decisões principais do Repository.
+3. Quantidade de testes aprovados e eventuais avisos.
+4. Resultado do git status.
+5. Possíveis riscos que exigem revisão humana.
+
+**Aguarde minha revisão e aprovação antes de criar qualquer commit ou avançar para a próxima etapa.**
+```
+
+**Arquivos criados:** `app/repositories/__init__.py`, `app/repositories/task_repository.py` e `tests/test_task_repository.py`. Este documento foi atualizado; os arquivos protegidos e as dependências permaneceram intactos.
+
+**Decisões técnicas:**
+
+- `TaskRepository(session)` recebe uma sessão já existente, sem criar engine, abrir ou fechar sessões. Nenhum método chama commit ou rollback.
+- `create(data: TaskCreate) -> Task` usa `model_dump()`, `session.add()` e `session.flush()`. O flush gera o ID e aplica os defaults já definidos no modelo, sem confirmar a transação.
+- `get_by_id(task_id: int) -> Task | None` usa `session.get()`.
+- `list_all() -> list[Task]` usa `select(Task).order_by(Task.id)`, com ordenação crescente e determinística.
+- `update(task_id: int, data: TaskUpdate) -> Task | None` consulta pelo ID, aplica somente `model_dump(exclude_unset=True)` e executa flush. Campo omitido é preservado; `descricao=None` remove a descrição. ID inexistente retorna `None`, sem erro HTTP ou regra de negócio.
+- `delete(task_id: int) -> bool` consulta pelo ID, usa `session.delete()` e flush; retorna `True` se excluiu e `False` se a tarefa não existe.
+- Os retornos são modelos SQLAlchemy ou resultados simples. Não foram adicionados filtros, paginação, Service, endpoints ou inicialização automática.
+- Erros de persistência são propagados: a futura camada Service deverá decidir commit ou rollback e tratar os erros. O flush opera sobre a sessão recebida, portanto também pode enviar outras alterações pendentes da mesma sessão; o chamador deve controlar sua unidade de trabalho.
+
+**Resultado obtido e testes executados:**
+
+- Criados 20 casos de teste com bancos SQLite individuais em `tmp_path`, sessões com `autoflush=False` e descarte das engines ao terminar.
+- Cobertos criação com ID/defaults e dados explícitos, consulta existente/inexistente, listagem vazia/ordenada, cinco casos de atualização parcial incluindo limpeza da descrição, atualização inexistente, exclusão existente/inexistente e isolamento entre dois bancos temporários.
+- Seis casos parametrizados verificam criação, atualização e exclusão com ou sem commit explícito do teste, consultando por nova sessão após o encerramento da sessão de escrita.
+- Um teste impede chamadas a commit, rollback e close da sessão pelo Repository durante suas operações. Os testes não repetem os limites dos schemas ou os CHECKs já cobertos nas etapas anteriores.
+- Executado `timeout 30s .venv/bin/python -m pytest -q` fora da restrição que afetou o TestClient anteriormente: **167 testes aprovados em 1,81 s**, sendo 20 do Repository, 33 da persistência, 104 dos schemas, nove dos enums e um de `/health`.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada.
+- `git diff --check`: sem erros.
+- `git status --short`: `docs/prompts.md` modificado, `app/repositories/` e `tests/test_task_repository.py` novos. Nenhum commit foi realizado.
+
+**Validação humana:** concluída. O usuário revisou a Etapa 2.4 com auxílio do ChatGPT. `app/repositories/task_repository.py` e `tests/test_task_repository.py` foram considerados adequados ao escopo acadêmico. Nenhum defeito obrigatório foi encontrado no Repository. O usuário autorizou o commit após o refinamento do teste de controle da sessão e a aprovação das verificações; a suíte repetida apresentou 167 testes aprovados. A Etapa 2.4 foi aprovada para commit.
+
+**Refinamentos realizados:** ajustado exclusivamente `test_repository_does_not_manage_received_session` para limitar os mocks de `commit`, `rollback` e `close` ao bloco `monkeypatch.context()`. Os métodos originais são restaurados ao sair do bloco, inclusive em caso de exceção, antes da limpeza normal da fixture. Os mocks continuam lançando erro se o Repository chamar esses métodos e agora também têm verificações explícitas de `assert_not_called()`. Nenhum caso foi adicionado ou removido, e o Repository não foi alterado.
+
+Após o refinamento, executados `timeout 30s .venv/bin/python -m pytest -q`, `.venv/bin/python -m pip check` e `git diff --check`. Resultado: **167 testes aprovados em 1,88 s**, com um aviso de depreciação interno do Starlette/AnyIO e sem falhas; nenhuma incompatibilidade de dependências ou erro no diff. O commit autorizado deve conter somente `app/repositories/__init__.py`, `app/repositories/task_repository.py`, `tests/test_task_repository.py` e `docs/prompts.md`, com a mensagem `feat: adiciona repository de tarefas`.
