@@ -229,3 +229,173 @@ Aguarde minha revisão e aprovação antes de continuar.
 **Validação humana:** o usuário aprovou o planejamento da modelagem. Os arquivos app/enums.py e tests/test_task_enums.py foram posteriormente revisados com auxílio do ChatGPT. A implementação dos enums e os testes foram considerados corretos e adequados ao escopo acadêmico. A execução do Pytest apresentou 10 testes aprovados, incluindo /health. A Etapa 2.1 foi aprovada para commit.
 
 **Refinamentos realizados:** a suíte foi repetida fora do ambiente restrito após a primeira tentativa atingir o limite de tempo. Não houve alteração de código motivada por falha de teste nem ampliação do escopo.
+
+## Etapa 2.2 — Schemas Pydantic v2 das tarefas
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** implementar os contratos de criação, atualização parcial e resposta das tarefas, reutilizando os enums existentes, com validações e testes automatizados.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.2 do projeto acadêmico micro-api-tarefas-python.
+
+Leia integralmente README.md, AGENTS.md, app/enums.py e docs/prompts.md.
+
+A Etapa 2.1 foi concluída, revisada e registrada no commit 3cb5aea.
+
+Implemente exclusivamente os schemas Pydantic v2 e seus testes automatizados.
+
+1. Criar app/schemas.py com:
+   - TaskCreate
+   - TaskUpdate
+   - TaskResponse
+
+2. Reutilizar TaskStatus e TaskPriority definidos em app/enums.py.
+
+3. Aplicar as seguintes regras:
+
+   TaskCreate:
+   - titulo obrigatório, entre 3 e 150 caracteres após trim.
+   - descricao opcional, até 2.000 caracteres, com trim e texto vazio convertido para None.
+   - prioridade padrão media.
+   - status não pode ser informado; toda tarefa nova será pendente.
+   - id não pode ser informado.
+
+   TaskUpdate:
+   - Permitir atualização parcial de titulo, descricao, status e prioridade.
+   - Distinguir campos omitidos de campos enviados como null.
+   - descricao=null permite remover a descrição.
+   - titulo, status e prioridade não podem receber null.
+   - Rejeitar atualização sem campos.
+
+   TaskResponse:
+   - Retornar id, titulo, descricao, status e prioridade.
+   - Configurar from_attributes=True.
+   - Validar id como inteiro positivo.
+
+4. Rejeitar campos desconhecidos com extra="forbid".
+
+5. Criar tests/test_task_schemas.py com testes para valores válidos, inválidos, limites, valores padrão, atualização parcial e serialização.
+
+6. Se necessário, declarar explicitamente Pydantic v2 em requirements.txt, preservando a compatibilidade com Python 3.10.
+
+7. Atualizar docs/prompts.md registrando o prompt original, as alterações realizadas, os resultados dos testes e a validação humana como pendente.
+
+Restrições:
+- Não implementar SQLAlchemy ou SQLite.
+- Não criar Repository, Service ou endpoints CRUD.
+- Não alterar app/main.py, app/enums.py, README.md, AGENTS.md ou .gitignore.
+- Não realizar commit.
+- Não implementar funcionalidades adicionais.
+
+Execute todos os testes automatizados, incluindo os existentes de enums e /health.
+
+Ao finalizar, apresente:
+- Arquivos criados ou alterados.
+- Principais decisões técnicas.
+- Resultados dos testes.
+- Git status.
+
+Aguarde minha revisão antes de avançar.
+```
+
+**Resultado obtido:**
+
+- Criado `app/schemas.py` com `TaskCreate`, `TaskUpdate` e `TaskResponse`, reutilizando `TaskStatus` e `TaskPriority`.
+- Definidas validações compartilhadas de título (3 a 150 caracteres após trim) e descrição (até 2.000 caracteres após trim, com texto vazio convertido em `None`).
+- `TaskCreate` exige título e aplica prioridade `media` e descrição `None` por padrão. Não contém campos `id` ou `status`, que são rejeitados como extras; a definição do status pendente na criação efetiva ficará para a futura camada de negócio.
+- `TaskUpdate` aceita campos omitidos, rejeita `null` explícito em título, status e prioridade e rejeita atualização vazia. `descricao=None` permite limpar a descrição. `model_fields_set` e `model_dump(exclude_unset=True)` preservam a distinção entre campo omitido e valor explicitamente enviado.
+- `TaskResponse` exige os cinco campos, aceita descrição nula, usa `from_attributes=True` e valida o ID como inteiro estritamente positivo, rejeitando conversões de texto, booleanos e números fracionários.
+- Os três schemas usam `extra="forbid"`. A serialização JSON produz os valores textuais dos enums.
+- Criado `tests/test_task_schemas.py` com 94 casos, incluindo entradas válidas e inválidas, limites após trim, valores padrão, campos desconhecidos, atualização parcial, limpeza da descrição, resposta por atributos e serialização JSON.
+- Adicionado `pydantic==2.14.1` a `requirements.txt`, declarando como dependência direta a versão v2 já instalada na `.venv` com Python 3.10. Não foi necessário instalar dependências.
+- Executado `.venv/bin/python -m pytest -q tests/test_task_schemas.py`: **94 testes aprovados em 0,33 s**.
+- Executado `.venv/bin/python -m pip check`: nenhuma incompatibilidade de dependências detectada.
+- Executado `timeout 30s .venv/bin/python -m pytest -q` fora do ambiente restrito, devido ao comportamento do TestClient observado nas etapas anteriores: **104 testes aprovados em 0,53 s**, incluindo os 94 casos dos schemas, os nove casos dos enums e `/health`.
+- A suíte completa apresentou um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- Não foram implementados SQLAlchemy, SQLite, Repository, Service ou endpoints CRUD. Os arquivos protegidos não foram alterados e nenhum commit foi realizado.
+
+**Validação humana:** concluída em 12/10/2026. O usuário revisou os arquivos app/schemas.py e tests/test_task_schemas.py com auxílio do ChatGPT.
+
+A revisão confirmou que os schemas atendem aos requisitos de criação, atualização parcial e resposta das tarefas, incluindo validação dos campos, normalização dos textos, tratamento de valores null, distinção entre campos omitidos e informados explicitamente, rejeição de campos desconhecidos e serialização JSON.
+
+A implementação foi considerada adequada ao escopo acadêmico, sem necessidade de alterações no código dos schemas.
+
+O Codex informou a aprovação inicial de 104 testes automatizados, incluindo 94 testes dos schemas, nove dos enums e um do endpoint /health.
+
+A Etapa 2.2 foi aprovada para commit, considerando também a revisão complementar realizada posteriormente.
+
+**Refinamentos realizados:** o requisito de tamanho mínimo do título passou de um caractere, proposto no planejamento inicial, para três caracteres, conforme o prompt de implementação.
+
+Após a primeira revisão humana, foi solicitada uma revisão complementar da cobertura dos testes, com atenção especial à distinção entre campos omitidos e null, validações após normalização dos textos e serialização parcial.
+
+Foram acrescentados dez casos de teste e reforçada uma verificação existente, elevando o total da suíte de 104 para 114 testes aprovados, conforme execução informada pelo Codex.
+
+Não houve necessidade de alterar app/schemas.py nem de ampliar o escopo funcional da etapa.
+
+### Revisão complementar da Etapa 2.2 — Cobertura dos schemas
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** revisar os schemas e reforçar apenas lacunas reais da cobertura, sem duplicar testes nem alterar a implementação sem defeito comprovado.
+
+**Prompt original:**
+
+```text
+Antes de finalizar a Etapa 2.2, faça uma revisão complementar dos arquivos app/schemas.py e tests/test_task_schemas.py.
+
+Objetivo: reforçar a cobertura dos testes, mantendo o código simples e evitando alterações desnecessárias.
+
+Verifique especialmente:
+
+1. A distinção entre campos omitidos e campos enviados explicitamente como null no TaskUpdate.
+2. A rejeição de null para titulo, status e prioridade.
+3. A aceitação de descricao=null para remover a descrição.
+4. A conversão de descricao contendo somente espaços para None.
+5. A validação do titulo após remover espaços, incluindo valores nos limites.
+6. A rejeição de campos desconhecidos nos três schemas.
+7. A serialização correta usando model_dump(exclude_unset=True).
+
+Regras:
+- Identifique quais cenários já possuem testes e quais realmente precisam de novos testes.
+- Não duplique testes existentes.
+- Altere app/schemas.py somente se encontrar um defeito comprovado.
+- Não implemente novas funcionalidades.
+- Não altere endpoints, banco de dados ou enums.
+- Execute a suíte completa de testes.
+- Atualize docs/prompts.md com esta revisão complementar, os resultados e a indicação de que a validação humana final ainda está pendente.
+- Não realize commit.
+
+Ao finalizar, apresente os testes adicionados, eventuais correções e o resultado completo do Pytest.
+
+Aguarde minha aprovação antes de avançar.
+```
+
+O prompt foi acompanhado de uma referência ao arquivo `tests/test_task_schemas.py` no editor.
+
+**Resultado obtido:**
+
+- Confirmada a cobertura já existente de campos omitidos versus `null`, rejeição de `null` em título/status/prioridade, descrição nula e vazia, limites válidos do título após trim, campos desconhecidos nos três schemas e atualização parcial serializada com `exclude_unset=True`.
+- Ampliado o teste parametrizado de títulos inválidos para incluir dois caracteres e 151 caracteres cercados de espaços em `TaskCreate` e `TaskUpdate`: quatro casos adicionais.
+- Estendido o teste existente de normalização e limite da descrição a `TaskResponse`: cinco casos adicionais, incluindo `None`, texto vazio, somente espaços/tabulação/quebra de linha, trim e limite de 2.000 caracteres.
+- Reforçado o teste existente de atualização parcial com uma asserção de `model_dump(exclude_unset=True)` no modo Python, além da verificação já existente no modo JSON.
+- Adicionado `test_update_dump_preserves_normalized_and_explicit_default_values`: verifica que o dump parcial contém os textos já normalizados e mantém status `pendente` e prioridade `media` explicitamente enviados.
+- Não foi identificado defeito comprovado; `app/schemas.py` permaneceu sem alterações nesta revisão. Apenas `tests/test_task_schemas.py` e este documento foram alterados nesta revisão.
+- Executado `timeout 30s .venv/bin/python -m pytest -q` fora do ambiente restrito, conforme a limitação do TestClient observada anteriormente: **114 testes aprovados em 0,51 s**, sendo 104 casos dos schemas, nove dos enums e um de `/health`.
+- A suíte apresentou um aviso de depreciação interno do Starlette/AnyIO sobre o alias `anyio.abc.BlockingPortal`, sem falhas. Nenhum commit foi realizado.
+
+**Validação humana:** concluída em 12/10/2026. O usuário solicitou uma revisão complementar dos testes para reforçar a cobertura de campos omitidos, valores null, normalização de textos, limites de validação e serialização de atualizações parciais.
+
+O Codex identificou que os principais cenários já estavam cobertos e acrescentou dez casos de teste, além de reforçar uma verificação existente de model_dump(exclude_unset=True).
+
+Não foram identificados defeitos que exigissem alterações em app/schemas.py.
+
+O Codex informou a execução da suíte completa com 114 testes aprovados, sendo 104 dos schemas, nove dos enums e um do endpoint /health, com um aviso de depreciação interno do Starlette/AnyIO, sem falhas.
+
+A implementação e os cenários apresentados foram revisados com auxílio do ChatGPT e considerados adequados. A revisão complementar foi aprovada para commit.
+
+Situação final da Etapa 2.2: aprovada para commit, sem funcionalidades pendentes dentro do escopo definido.
+
+**Refinamentos realizados:** acrescentados dez casos aos testes de schemas e uma asserção aos casos existentes de atualização parcial. Os cenários já cobertos foram reaproveitados, sem duplicação de funções de teste e sem mudança de funcionalidades.
