@@ -1,4 +1,4 @@
-# Registro dos principais prompts de desenvolvimento
+~~# Registro dos principais prompts de desenvolvimento
 
 Este documento registra os prompts cujo texto original está disponível na conversa e os resultados observados. As transcrições preservam o texto enviado pelo usuário. As instruções de `AGENTS.md` permanecem no próprio arquivo.
 
@@ -1462,4 +1462,72 @@ Resposta local esperada sem chave: {"prioridade": "alta", "origem": "local"}
 
 **Validação humana:** concluída e aprovada. O usuário confirmou a revisão humana final de `app/priority_schemas.py`, `app/api/priorities.py`, `tests/test_priority_api.py`, `app/main.py` e `docs/prompts.md`, sem necessidade de correções. A Etapa 2.8.2.2 — Endpoint HTTP de sugestão de prioridade foi aprovada para commit exclusivamente desses cinco arquivos, com a mensagem `feat: adiciona endpoint de sugestao de prioridade`. A suíte completa anteriormente executada apresentou 355 testes aprovados, sem chamadas reais à OpenAI. Nenhuma nova etapa de implementação foi autorizada nesta solicitação.
 
-**Refinamentos realizados:** nenhuma correção foi necessária após a primeira execução da suíte completa. As validações e o serviço existentes foram reutilizados sem mudanças.
+**Refinamentos realizados:** nenhuma correção foi necessária após a primeira execução da suíte completa. As validações e o serviço existentes foram reutilizados sem mudanças.~~
+
+## Etapa 3.1 — README Final da Unidade V
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** atualizar exclusivamente o README para a entrega acadêmica da Unidade V, documentando funcionalidades implementadas, instalação, execução, testes, IA, limitações e demonstração.
+
+**Prompt original:**
+
+```text
+Vamos iniciar a Etapa 3.1 — README Final da Unidade V.
+
+Objetivo: atualizar exclusivamente o arquivo README.md do projeto micro-api-tarefas-python, transformando a documentação inicial em um README acadêmico completo.
+
+Antes de editar, examine o código atual e os arquivos de dependências para documentar somente funcionalidades realmente implementadas.
+
+O README deve conter:
+
+1. Apresentação e objetivo do projeto.
+2. Problema resolvido pela API.
+3. Tecnologias e versões utilizadas.
+4. Arquitetura em camadas e responsabilidades.
+5. Pré-requisitos e instalação com Python 3.10.
+6. Criação e ativação de ambiente virtual no Linux.
+7. Instalação das dependências.
+8. Execução com Uvicorn.
+9. Acesso ao Swagger, OpenAPI e /health.
+10. Endpoints CRUD, conclusão, filtro por status e sugestão de prioridade.
+11. Exemplos reais de requisições e respostas JSON.
+12. Configuração opcional da OpenAI por variáveis de ambiente, explicando que o projeto não carrega .env automaticamente.
+13. Explicação do fallback local e suas limitações.
+14. Como executar os testes automatizados.
+15. Como ChatGPT e Codex auxiliaram no desenvolvimento, destacando revisão humana, testes e registro em docs/prompts.md.
+16. Limitações conhecidas e possíveis melhorias futuras.
+17. Orientações básicas de demonstração.
+
+Restrições:
+- Altere somente README.md.
+- Não modifique código, testes, dependências ou docs/prompts.md.
+- Não instale pacotes.
+- Não faça chamadas reais à OpenAI.
+- Não crie commits ou tags.
+- Não publique nada no GitHub.
+- Preserve a alteração local preexistente em docs/prompts.md.
+- Não invente funcionalidades, resultados de testes ou métricas de produtividade.
+- Utilize linguagem clara, profissional e adequada à entrega acadêmica.
+
+Ao finalizar, apresente um resumo das alterações, o diff do README.md e o git status.
+
+Aguarde minha revisão humana antes de qualquer commit.
+```
+
+O prompt foi acompanhado de uma referência ao arquivo `docs/prompts.md` no editor.
+
+**Resultado obtido:**
+
+- Examinados o código atual, os contratos HTTP, os serviços, a persistência e os arquivos de dependências antes da edição.
+- Atualizado somente `README.md` na implementação desta etapa, com os 17 itens solicitados. A documentação inicial foi substituída por apresentação acadêmica, tecnologias/versões, arquitetura, instalação Linux, execução, contratos e exemplos HTTP/JSON, configuração opcional da OpenAI, fallback, testes, assistência de ChatGPT/Codex, limitações e roteiro de demonstração.
+- Documentado que o projeto não carrega `.env` automaticamente, que sugestão não persiste tarefas e que chamadas reais podem gerar consumo. Exemplos são apresentados como contratos do código, não como nova execução da API.
+- O diff informado do README apresentou 325 linhas adicionadas e 32 removidas; o diff completo foi mostrado ao usuário.
+- Verificados links locais, equilíbrio dos blocos Markdown e validação dos payloads de criação, atualização e sugestão por meio dos schemas existentes, sem chamadas à API ou geração de bytecode.
+- `git diff --check` passou. A suíte Pytest não foi reexecutada na edição do README; os 355 testes aprovados são identificados no documento como resultado histórico registrado da Etapa 2.8.2.2, sem alegação de nova execução ou métrica de produtividade.
+- A alteração local preexistente em `docs/prompts.md` foi preservada durante a edição do README: seu SHA256 permaneceu `0403c6096e1dbfd3ce3f2e18eb31ed9d0d19036edf59b4db76e31402a41f2742` antes e depois.
+- Após aprovação humana, este registro foi acrescentado ao final de `docs/prompts.md`, por autorização expressa, preservando integralmente os bytes anteriores e a alteração preexistente.
+
+**Validação humana:** concluída e aprovada. O usuário informou que revisou o conteúdo completo de `README.md`, considerou-o adequado e não identificou correções obrigatórias. Autorizou o registro desta etapa e o commit exclusivamente de `README.md` e `docs/prompts.md`, com a mensagem `docs: finaliza README academico da Unidade V`. A próxima etapa depende de confirmação posterior.
+
+**Refinamentos realizados:** nenhuma correção obrigatória foi solicitada na revisão humana. Não foram alterados código, testes, dependências ou funcionalidades, instalados pacotes, criadas tags, feitas chamadas à OpenAI ou publicações no GitHub.
