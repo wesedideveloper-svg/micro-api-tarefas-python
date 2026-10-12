@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.api.priorities import router as priority_router
 from app.api.tasks import router
 from app.database import Base, engine
 from app.services.task_service import TaskNotFoundError
@@ -27,6 +28,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# A rota estática deve preceder as rotas com /{task_id}.
+app.include_router(priority_router)
 app.include_router(router)
 
 

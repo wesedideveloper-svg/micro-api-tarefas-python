@@ -1380,3 +1380,86 @@ Aguarde minha revisão humana.
 - `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada. `git diff --check`: sem erros.
 - `git status --short`: `docs/prompts.md` e `requirements.txt` modificados; `app/integrations/`, `app/services/priority_suggestion_service.py`, `tests/test_openai_priority_client.py` e `tests/test_priority_suggestion_service.py` novos, todos pertencentes à entrega ainda sem commit. Nesta verificação, somente o cliente, seu teste e este documento receberam ajustes.
 - Após esta verificação complementar, o usuário aprovou a revisão humana final e autorizou o commit da Etapa 2.8.2.1. Nenhum endpoint ou chamada real à OpenAI foi realizado; a Etapa 2.8.2.2 não foi iniciada.
+
+## Etapa 2.8.2.2 — Endpoint HTTP de sugestão de prioridade
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** disponibilizar sugestão de prioridade por HTTP, reutilizando a integração e o fallback existentes, sem persistência ou alteração do CRUD.
+
+**Prompt original:**
+
+```text
+Vamos iniciar a Etapa 2.8.2.2 — Endpoint HTTP de sugestão de prioridade do projeto micro-api-tarefas-python.
+
+A Etapa 2.8.2.1 foi concluída e registrada no commit e029044, com 324 testes aprovados.
+
+Antes de implementar, leia README.md, AGENTS.md, docs/prompts.md e os arquivos existentes da API, schemas, cliente OpenAI e serviço de sugestão.
+
+Implemente exclusivamente:
+
+1. Criar os schemas Pydantic de entrada e saída para a sugestão de prioridade.
+2. Criar POST /tarefas/sugerir-prioridade, retornando HTTP 200.
+3. Reutilizar PrioritySuggestionService.from_env() e o serviço de fallback já implementado.
+4. Validar título obrigatório com 3 a 150 caracteres após trim e descrição opcional com até 2.000 caracteres, reutilizando as validações existentes.
+5. Rejeitar campos extras e entradas inválidas com HTTP 422.
+6. Retornar prioridade como TaskPriority e origem como "ia" ou "local".
+7. Registrar o endpoint no FastAPI e disponibilizá-lo no Swagger.
+8. Garantir que a rota estática /tarefas/sugerir-prioridade não seja interceptada pela rota dinâmica /tarefas/{task_id}.
+9. Criar testes de API com mocks, sem chamadas reais à OpenAI, cobrindo sucesso, fallback, validações, documentação e preservação do CRUD.
+10. Atualizar docs/prompts.md com o prompt, decisões, testes, resultados e validação humana pendente.
+
+Restrições:
+- Não alterar o cliente OpenAI nem a função local suggest_priority().
+- Não modificar banco de dados, Repository ou TaskService.
+- Não adicionar dependências desnecessárias.
+- Não realizar chamadas reais à OpenAI.
+- Não realizar commit.
+- Não iniciar a próxima etapa.
+
+Execute a suíte completa de testes, pip check, git diff --check e git status.
+
+Apresente os arquivos criados ou alterados, os resultados dos testes e os riscos identificados.
+
+Aguarde minha revisão humana antes de continuar.
+```
+
+**Arquivos criados:** `app/priority_schemas.py`, `app/api/priorities.py` e `tests/test_priority_api.py`.
+
+**Arquivos alterados:** `app/main.py` para registrar o router estático antes do router de tarefas, e este documento. Nenhuma dependência ou camada existente de integração, validação de tarefas, negócio ou persistência foi alterada.
+
+**Decisões técnicas:**
+
+- `PrioritySuggestionRequest` reutiliza `TaskTitle` e `TaskDescription` existentes: título obrigatório com 3 a 150 caracteres após trim; descrição opcional, até 2.000 após trim, com texto vazio normalizado para `None`. `extra="forbid"` rejeita campos como ID, status e prioridade na entrada.
+- `PrioritySuggestionResponse` usa `prioridade: TaskPriority`, `origem: Literal["ia", "local"]`, `extra="forbid"` e `from_attributes=True`, permitindo validar os atributos do resultado interno do Service sem mudar esse resultado ou os schemas anteriores.
+- `POST /tarefas/sugerir-prioridade` é uma rota síncrona com HTTP 200 e response_model específico. Recebe apenas título e descrição validados, chama `PrioritySuggestionService.from_env()` e delega a sugestão. Não usa Depends(get_db), Repository ou TaskService; não salva nem altera tarefas.
+- `app/main.py` registra o novo router antes das rotas dinâmicas por ID, com ordem explicitamente verificada no teste. A rota é documentada automaticamente no OpenAPI e Swagger, com tag `Sugestão de prioridade`.
+- Entradas inválidas retornam 422 antes de construir o serviço. Falhas previstas do cliente continuam sendo tratadas pelo fallback existente e retornam 200 com origem local. Falhas inesperadas ou configurações inválidas mantêm o 500 padrão, sem detalhes internos.
+- Riscos preservados para revisão: com chave configurada, o uso real do endpoint enviará título/descrição ao provedor e poderá gerar consumo; os testes não fizeram isso. Qualidade/latência reais do modelo não foram avaliadas. Sem configuração ou em falha prevista, o fallback mantém as limitações da heurística por palavras-chave. Configuração inválida de timeout não é mascarada como fallback.
+
+**Testes e resultados reais:**
+
+- Criados 31 casos de API, reutilizando o TestClient e SQLite temporário já existentes.
+- Cobertos os três valores de prioridade com IA simulada, normalização dos textos enviados ao serviço, três resultados de fallback após falha prevista e fallback real sem configuração da chave.
+- Cobertas descrição nula/vazia/somente espaços, limites válidos após trim, corpo obrigatório, doze entradas inválidas/extras com 422 e ausência de chamada ao serviço para entrada inválida.
+- Verificados ordem da rota estática, OpenAPI (schemas, enums, campos extras, limites e respostas) e disponibilidade de Swagger. Um teste impede uso da dependência de sessão de banco pelo endpoint de sugestão.
+- Um fluxo CRUD verifica que a sugestão não cria ou altera tarefas, nem substitui a prioridade de tarefa existente. Os testes anteriores de CRUD, conclusão e filtro continuam na suíte.
+- Verificado HTTP 500 genérico para erro inesperado e rejeição de respostas inválidas de prioridade/origem pelo response_model.
+- Chamadas de IA foram simuladas por mocks; um bloqueio adicional de `OpenAIPriorityClient.suggest` impede chamada real acidental nos testes deste arquivo. Variáveis de configuração reais são removidas temporariamente e restauradas pelo monkeypatch.
+- Executado `timeout 45s .venv/bin/python -m pytest -q`, fora da restrição que afetou o TestClient anteriormente: **355 testes aprovados em 6,58 s**, incluindo os 324 casos anteriores.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada. `git diff --check`: sem erros.
+- `git status --short`: `app/main.py` e `docs/prompts.md` modificados; novos `app/api/priorities.py`, `app/priority_schemas.py` e `tests/test_priority_api.py`.
+- Nenhuma chamada real à OpenAI, dependência nova ou commit foi realizado. A próxima etapa não foi iniciada.
+
+**Exemplo do contrato:**
+
+```text
+POST /tarefas/sugerir-prioridade
+Entrada: {"titulo": "Corrigir falha urgente", "descricao": null}
+Resposta local esperada sem chave: {"prioridade": "alta", "origem": "local"}
+```
+
+**Validação humana:** concluída e aprovada. O usuário confirmou a revisão humana final de `app/priority_schemas.py`, `app/api/priorities.py`, `tests/test_priority_api.py`, `app/main.py` e `docs/prompts.md`, sem necessidade de correções. A Etapa 2.8.2.2 — Endpoint HTTP de sugestão de prioridade foi aprovada para commit exclusivamente desses cinco arquivos, com a mensagem `feat: adiciona endpoint de sugestao de prioridade`. A suíte completa anteriormente executada apresentou 355 testes aprovados, sem chamadas reais à OpenAI. Nenhuma nova etapa de implementação foi autorizada nesta solicitação.
+
+**Refinamentos realizados:** nenhuma correção foi necessária após a primeira execução da suíte completa. As validações e o serviço existentes foram reutilizados sem mudanças.
