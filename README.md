@@ -1,6 +1,6 @@
 # Micro-API de Gerenciamento de Tarefas
 
-API RESTful desenvolvida como projeto acadêmico da pós-graduação em Engenharia de Software com Inteligência Artificial Generativa. Esta documentação apoia a entrega da Unidade V — Empacotamento, README Final, Demonstração e Submissão.
+API RESTful desenvolvida em Python com FastAPI para gerenciamento de tarefas, utilizando SQLite para persistência de dados e integração com Inteligência Artificial Generativa para sugestão de prioridades. Projeto desenvolvido no contexto da pós-graduação em Engenharia de Software com Inteligência Artificial Generativa.
 
 ## Apresentação e objetivo
 
