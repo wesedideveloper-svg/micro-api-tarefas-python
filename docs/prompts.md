@@ -1580,3 +1580,57 @@ O prompt foi acompanhado de uma referência ao arquivo `README.md` no editor.
 **Validação humana:** concluída e aprovada. O usuário informou que revisou o conteúdo de `.env.example` e o considerou adequado aos requisitos da Unidade V. Autorizou o registro desta etapa e o commit exclusivamente de `.env.example` e `docs/prompts.md`, com a mensagem `docs: adiciona exemplo de configuracao de ambiente`. A próxima etapa depende de confirmação posterior.
 
 **Refinamentos realizados:** nenhuma correção foi solicitada; os padrões e o mecanismo de configuração da aplicação foram preservados.
+
+## Etapa 3.2.2 — Ajustes no .gitignore
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** complementar a proteção dos arquivos temporários e auxiliares do SQLite, preservando todas as regras existentes.
+
+**Prompt original:**
+
+```text
+Vamos iniciar a Etapa 3.2.2 — Ajustes no .gitignore da Unidade V.
+
+Objetivo: complementar a proteção de arquivos temporários do SQLite, preservando todas as regras existentes.
+
+Instruções:
+
+1. Leia o conteúdo atual de .gitignore.
+2. Verifique se já existem regras equivalentes para os arquivos auxiliares SQLite.
+3. Se estiverem ausentes, acrescente somente:
+
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+
+4. Não remova nem modifique as regras existentes.
+5. Não altere arquivos Python, testes, dependências, README.md, .env.example ou docs/prompts.md.
+6. Não execute testes, instale pacotes ou faça chamadas à OpenAI.
+7. Não crie commits, tags ou publique nada no GitHub.
+
+Ao finalizar:
+- Apresente o conteúdo completo do .gitignore.
+- Mostre o diff.
+- Execute git diff --check.
+- Execute git status.
+- Aguarde minha revisão humana antes de qualquer commit.
+```
+
+**Resultado obtido:**
+
+- Lido o `.gitignore` e verificada com `git check-ignore --stdin` a ausência de cobertura dos nove tipos de arquivos auxiliares solicitados.
+- Acrescentadas somente as nove regras, na seção de banco de dados local. Preservadas todas as regras anteriores e a ausência original de quebra de linha ao final do arquivo.
+- Apresentados o conteúdo completo e o diff; `git diff --check` passou e `git status --short` mostrou somente `.gitignore` modificado na implementação.
+- Após aprovação humana, este registro foi acrescentado ao final de `docs/prompts.md`, preservando integralmente seu conteúdo anterior. O commit autorizado inclui somente `.gitignore` e `docs/prompts.md`.
+- Não foram alterados código Python, testes, dependências, README, .env.example ou funcionalidades. Não foram executados testes, instalados pacotes, realizadas chamadas à OpenAI, criadas tags ou publicações no GitHub.
+
+**Validação humana:** concluída e aprovada. O usuário confirmou que revisou as nove regras adicionadas e que estão corretas. Autorizou o registro desta etapa e o commit exclusivamente de `.gitignore` e `docs/prompts.md`, com a mensagem `chore: protege arquivos auxiliares do SQLite`. A próxima etapa depende de confirmação posterior.
+
+**Refinamentos realizados:** preservado o término original do `.gitignore`, garantindo que o diff contenha somente as nove regras solicitadas. Nenhuma correção adicional foi requerida na revisão humana.
