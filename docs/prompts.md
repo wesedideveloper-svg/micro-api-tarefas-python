@@ -1285,3 +1285,98 @@ O prompt foi acompanhado de uma referência ao arquivo `docs/prompts.md` no edit
 **Validação humana:** concluída e aprovada. O usuário confirmou a revisão humana final de `app/services/priority_service.py`, `tests/test_priority_service.py` e `docs/prompts.md`, sem correções obrigatórias. A Etapa 2.8.1 foi aprovada para um único commit, condicionado à repetição bem-sucedida da suíte completa, `pip check` e `git diff --check`, com a mensagem `feat: adiciona sugestao local de prioridade`. Somente esses três arquivos foram autorizados; a Etapa 2.8.2 não deve ser iniciada nesta solicitação.
 
 **Refinamentos realizados:** não foram necessárias correções após a primeira execução da suíte completa.
+
+## Etapa 2.8.2.1 — Cliente OpenAI e serviço de fallback
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** implementar exclusivamente o adaptador OpenAI e a coordenação de sugestão por IA com fallback local, sem criar endpoint ou consumir créditos em testes.
+
+**Prompt original:**
+
+```text
+Aprovo o planejamento da Etapa 2.8.2 com os ajustes discutidos.
+
+Inicie somente a Etapa 2.8.2.1 — Cliente OpenAI e serviço de fallback.
+
+Antes de implementar, consulte a documentação oficial atual da OpenAI para confirmar:
+- SDK Python compatível com Python 3.10.12.
+- Modelo econômico adequado à classificação de textos curtos.
+- Uso da Responses API e saída estruturada.
+- Timeout e desativação de retries automáticos.
+
+Implemente exclusivamente:
+
+1. Cliente de integração OpenAI isolado.
+2. Serviço que tenta obter a prioridade pela IA e utiliza `suggest_priority()` quando ocorrer uma falha prevista.
+3. Configuração por variáveis de ambiente, sem armazenar credenciais.
+4. Validação obrigatória da prioridade retornada usando `TaskPriority`.
+5. Testes unitários com mocks, sem chamadas externas.
+6. Registro completo da etapa em `docs/prompts.md`, mantendo validação humana pendente.
+
+Restrições:
+- Não criar endpoints nesta entrega.
+- Não modificar o CRUD, banco, Repository ou schemas existentes.
+- Não alterar a função local `suggest_priority()`.
+- Não realizar chamadas reais à OpenAI.
+- Não realizar commit.
+- Não iniciar a Etapa 2.8.2.2.
+
+Execute a suíte completa de testes, `pip check`, `git diff --check` e `git status`.
+
+Apresente os arquivos alterados, o modelo e a versão do SDK escolhidos, os resultados dos testes e os riscos identificados.
+
+Aguarde minha revisão humana.
+```
+
+**Documentação oficial consultada:**
+
+- [SDK Python da OpenAI](https://developers.openai.com/api/reference/python): Python 3.10+, Responses API, timeout configurável e `max_retries=0` para desativar retries automáticos.
+- [GPT-5 nano](https://developers.openai.com/api/docs/models/gpt-5-nano): modelo econômico da família GPT-5 indicado para classificação, com suporte à Responses API e Structured Outputs. Foi escolhido por atender à tarefa acadêmica; não foi tratado como o modelo mais recente ou superior a todas as alternativas.
+- [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses): uso de `responses.parse()` com modelo Pydantic em `text_format` e resultado em `output_parsed`, incluindo o tratamento de recusas e respostas incompletas.
+- Confirmados localmente os metadados do SDK instalado: `openai==3.29.0`, `Requires-Python: >=3.10`, com execução em Python 3.10.12; inspecionada também a assinatura de `Responses.parse`.
+
+**Arquivos criados:** `app/integrations/__init__.py`, `app/integrations/openai_priority_client.py`, `app/services/priority_suggestion_service.py`, `tests/test_openai_priority_client.py` e `tests/test_priority_suggestion_service.py`.
+
+**Arquivos modificados:** `requirements.txt` para declarar `openai==3.29.0` e este documento. Não foram alterados endpoints, banco, modelos, enums, schemas existentes, Repository, TaskService, função local, README ou AGENTS.
+
+**Decisões técnicas:**
+
+- `OpenAIPriorityClient` usa o SDK síncrono, separado das camadas de HTTP e persistência. A importação e a configuração não fazem chamadas externas. O cliente SDK é criado somente em `suggest()` e fechado por gerenciador de contexto ao terminar, inclusive em caso de erro.
+- Configuração por `OPENAI_API_KEY`, `OPENAI_MODEL` (padrão `gpt-5-nano`) e `OPENAI_TIMEOUT_SECONDS` (padrão 10 segundos). A chave é lida do ambiente e mantida apenas em memória, sem arquivo ou log. Chave ausente/vazia ou modelo explicitamente vazio desabilitam a IA e permitem fallback imediato.
+- Timeout deve ser numérico, positivo e finito; configuração inválida gera `ValueError` e não é mascarada como falha do provedor. Não foi adicionada dependência de dotenv.
+- O cliente utiliza a URL padrão do SDK, `https://api.openai.com/v1` para autenticação por chave quando `OPENAI_BASE_URL` não está definida, com `max_retries=0` e timeout configurado. O parâmetro explícito de URL foi removido na verificação complementar abaixo. O timeout é do transporte, não uma garantia absoluta de duração total.
+- A chamada usa `responses.parse()`, saída Pydantic interna `_PriorityOutput` com campo `prioridade: TaskPriority` e `extra="forbid"`. Não altera os schemas existentes. A prioridade é novamente convertida para `TaskPriority` antes de retornar.
+- Título/descrição seguem como JSON de dados, separados das instruções fixas. O prompt instrui o modelo a classificar alta para urgência/impacto crítico, média para importância/prazo comum e baixa para atividade opcional/adiável, com padrão média. Não são oferecidas ferramentas ou alterações de tarefas.
+- Configurados `max_output_tokens=1024` e `store=False`. Resposta não concluída, recusada ou sem saída parseada gera `PriorityIntegrationError`; limite de tokens pode incluir raciocínio, e resposta incompleta aciona fallback.
+- Erros de conexão/timeout, status HTTP do provedor, validação de resposta do SDK e prioridade/JSON inválidos são traduzidos para `PriorityIntegrationError`, com mensagens locais genéricas. Exceções inesperadas, como `RuntimeError`, continuam propagadas.
+- `PrioritySuggestionService.suggest()` captura somente `PriorityIntegrationError`. Em falha prevista ou cliente ausente, reutiliza `suggest_priority(titulo, descricao)` com os textos originais, sem modificar a função local.
+- Resultado interno `PrioritySuggestion` é um dataclass imutável com `prioridade: TaskPriority` e `origem` igual a `ia` ou `local`; não é schema HTTP. `PrioritySuggestionService.from_env()` permite construir o serviço configurado sem depender de banco ou endpoint.
+- Riscos para revisão: qualidade e latência do modelo ainda não foram avaliadas com chamadas reais; disponibilidade depende da conta. Textos enviados ao provedor podem conter dados sensíveis. `store=False` não deve ser interpretado como garantia de ausência total de retenção pelo provedor. Resposta incompleta/timeout e erros de configuração de credencial no provedor podem levar ao fallback. A heurística local preserva suas limitações de contexto e negação.
+
+**Testes e verificações executados:**
+
+- Instalado o SDK na `.venv` com `.venv/bin/python -m pip install --no-cache-dir openai`; a versão resolvida 3.29.0 foi fixada em `requirements.txt`. Foram instaladas suas dependências transitivas, sem alterar as versões diretas já declaradas do projeto.
+- Executado `.venv/bin/python -m pytest -q tests/test_openai_priority_client.py tests/test_priority_suggestion_service.py` antes dos três casos de transporte simulado: **52 testes aprovados em 2,23 s**, com um aviso interno do Starlette/AnyIO decorrente da importação do cliente de testes existente.
+- Acrescentados três casos com SDK/parser real e `httpx2.MockTransport`, retornando resposta estruturada válida, prioridade inválida e texto malformado. Confirmam o JSON Schema estrito enviado pelo SDK e a validação real, sem conexão externa.
+- Total de 55 novos casos: 42 do cliente e 13 do serviço. Cobrem os três enums, payload/configuração, timeout/retries, erros HTTP e de transporte, recusas/incompletude, resposta inválida, configuração ausente, fallback, preservação de textos e propagação de defeitos inesperados. Os testes de configuração removem variáveis reais e usam exclusivamente credenciais fictícias.
+- Executado `timeout 45s .venv/bin/python -m pytest -q`, fora da restrição que afetou o TestClient anteriormente: **324 testes aprovados em 5,95 s**, incluindo os 269 casos anteriores.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada. `git diff --check`: sem erros.
+- `git status --short`: `requirements.txt` e `docs/prompts.md` modificados; novos `app/integrations/`, `app/services/priority_suggestion_service.py`, `tests/test_openai_priority_client.py` e `tests/test_priority_suggestion_service.py`.
+- Nenhuma chamada real à OpenAI foi realizada; consulta da documentação e instalação do pacote não utilizaram a API de inferência. Nenhum commit foi realizado. A Etapa 2.8.2.2 não foi iniciada.
+
+**Validação humana:** concluída e aprovada. O usuário confirmou a aprovação humana final da Etapa 2.8.2.1 — Cliente OpenAI e serviço de fallback, incluindo a verificação complementar, e autorizou o commit exclusivamente dos arquivos desta entrega com a mensagem `feat: adiciona integracao openai com fallback local`. A suíte completa anteriormente executada apresentou 324 testes aprovados, sem chamadas reais à OpenAI. A Etapa 2.8.2.2 depende de autorização posterior.
+
+**Refinamentos realizados:** após os testes unitários iniciais, acrescentados três casos de transporte HTTP simulado para verificar também o parser real do SDK e o formato estruturado da requisição, sem ampliar o escopo funcional.
+
+### Verificação complementar — Transporte HTTP, URL padrão e dependências
+
+- Conferidos os metadados e o código original do SDK instalado `openai==3.29.0`: a dependência declarada é `httpx2<3,>=2.12.0`, e os módulos `openai._client` e `openai._base_client` importam `httpx2`. Portanto, o uso de `httpx2` nos testes e neste registro está correto e foi preservado. O `httpx==0.28.1` existente nas dependências de desenvolvimento atende ao TestClient, uma finalidade diferente.
+- Confirmada no código do SDK a URL padrão `https://api.openai.com/v1` para autenticação por chave. Removido somente o argumento explícito `base_url` de `OpenAIPriorityClient.suggest()` e sua expectativa no teste do construtor.
+- A fixture dos testes do cliente também remove temporariamente `OPENAI_BASE_URL`, impedindo interferência da configuração externa. O teste existente com MockTransport passou a verificar que a URL gerada pelo SDK é `https://api.openai.com/v1/responses`. Não houve requisição real.
+- Conferido o conteúdo completo de `requirements.txt`: `fastapi==0.115.12`, `uvicorn==0.34.2`, `pydantic==2.14.1`, `SQLAlchemy==2.0.44` e `openai==3.29.0`. Nenhuma versão ou dependência foi alterada nesta verificação.
+- Executado novamente `timeout 45s .venv/bin/python -m pytest -q`: **324 testes aprovados em 5,89 s**, com um aviso de depreciação interno do Starlette/AnyIO e sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada. `git diff --check`: sem erros.
+- `git status --short`: `docs/prompts.md` e `requirements.txt` modificados; `app/integrations/`, `app/services/priority_suggestion_service.py`, `tests/test_openai_priority_client.py` e `tests/test_priority_suggestion_service.py` novos, todos pertencentes à entrega ainda sem commit. Nesta verificação, somente o cliente, seu teste e este documento receberam ajustes.
+- Após esta verificação complementar, o usuário aprovou a revisão humana final e autorizou o commit da Etapa 2.8.2.1. Nenhum endpoint ou chamada real à OpenAI foi realizado; a Etapa 2.8.2.2 não foi iniciada.
