@@ -1634,3 +1634,65 @@ Ao finalizar:
 **Validação humana:** concluída e aprovada. O usuário confirmou que revisou as nove regras adicionadas e que estão corretas. Autorizou o registro desta etapa e o commit exclusivamente de `.gitignore` e `docs/prompts.md`, com a mensagem `chore: protege arquivos auxiliares do SQLite`. A próxima etapa depende de confirmação posterior.
 
 **Refinamentos realizados:** preservado o término original do `.gitignore`, garantindo que o diff contenha somente as nove regras solicitadas. Nenhuma correção adicional foi requerida na revisão humana.
+
+## Etapa 3.2.3 — Criação do Makefile
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** disponibilizar cinco comandos simples de instalação, execução, testes e verificação de dependências, sem alterar funcionalidades ou executar esses comandos nesta entrega.
+
+**Prompt original:**
+
+```text
+Vamos iniciar a Etapa 3.2.3 — Criação do Makefile da Unidade V.
+
+Crie um arquivo chamado Makefile na raiz do projeto micro-api-tarefas-python.
+
+Esse arquivo deve conter cinco comandos:
+
+- make install: instalar requirements.txt.
+- make install-dev: instalar requirements-dev.txt.
+- make run: iniciar a API com Uvicorn e --reload.
+- make test: executar os testes com Pytest.
+- make check: verificar as dependências com pip check.
+
+Utilize a variável PYTHON com valor padrão python e declare os alvos como .PHONY.
+
+Regras importantes:
+
+1. Crie somente o arquivo Makefile.
+2. Não altere nenhum outro arquivo do projeto.
+3. Não execute instalações ou testes.
+4. Não faça chamadas à OpenAI.
+5. Não crie commits.
+6. Não publique nada no GitHub.
+7. Verifique a sintaxe com make -n, sem executar os comandos.
+
+Ao finalizar, mostre o conteúdo completo do Makefile, o resultado da verificação e o git status.
+
+Aguarde minha aprovação humana antes de qualquer commit.
+```
+
+O prompt foi acompanhado de uma referência ao arquivo `.gitignore` no editor.
+
+**Resultado obtido:**
+
+- Criado somente `Makefile` na raiz, com `PYTHON ?= python` e os cinco alvos declarados como `.PHONY`.
+- `install` usa `$(PYTHON) -m pip install -r requirements.txt`; `install-dev` utiliza `requirements-dev.txt`; `run` inicia `uvicorn app.main:app --reload`; `test` executa Pytest; `check` executa `pip check`.
+- O conteúdo completo foi apresentado ao usuário. `git status --short` mostrou somente `?? Makefile` na implementação.
+- Executado `make -n install install-dev run test check`, com sucesso, sem executar instalações, servidor, testes ou verificação de dependências. A saída foi:
+
+```text
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m uvicorn app.main:app --reload
+python -m pytest
+python -m pip check
+```
+
+- Após aprovação humana, o Makefile foi conferido novamente e o mesmo comando `make -n` repetido com sucesso. Este registro foi acrescentado ao final de `docs/prompts.md`, preservando integralmente seu conteúdo anterior. Executado `git diff --check` antes de preparar o commit autorizado.
+- Não foram alterados código Python, testes, README, .env.example, .gitignore ou dependências. Não foram executados instalações, testes ou chamadas reais à OpenAI, criadas tags ou realizadas publicações no GitHub.
+
+**Validação humana:** concluída e aprovada. O usuário informou que revisou o Makefile e que está correto, sem necessidade de alterações. Autorizou o registro da Etapa 3.2.3 e o commit exclusivamente de `Makefile` e `docs/prompts.md`, com a mensagem `build: adiciona Makefile para execucao e testes`. A próxima etapa depende de confirmação posterior.
+
+**Refinamentos realizados:** nenhum; o arquivo aprovado permaneceu sem alterações durante a preparação do commit.
