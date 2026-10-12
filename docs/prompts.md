@@ -1752,3 +1752,70 @@ Ao finalizar:
 **Validação humana:** concluída e aprovada. O usuário informou que analisou o diff completo e que todas as alterações estão corretas. Autorizou o registro da Etapa 3.2.4 e o commit exclusivamente de `README.md` e `docs/prompts.md`, com a mensagem `docs: atualiza README com Makefile e configuracao de ambiente`. A próxima etapa depende de confirmação posterior.
 
 **Refinamentos realizados:** nenhuma correção foi solicitada na revisão humana; o README aprovado permaneceu sem alterações durante a preparação do commit.
+
+
+## Etapa 3.4 — Roteiro de Demonstração Acadêmica da Unidade V
+
+**Data:** 12/10/2026.
+
+**Objetivo:** preparar um roteiro de apresentação de 3 a 5 minutos, utilizando exclusivamente as funcionalidades implementadas e documentadas no README, com exemplos para o Swagger e demonstração do fallback local sem chamadas reais à OpenAI.
+
+**Prompt original:**
+
+```text
+Vamos iniciar a Etapa 3.4 — Preparação da Demonstração Acadêmica da Unidade V.
+
+Projeto: micro-api-tarefas-python.
+
+Objetivo: preparar um roteiro de apresentação de 3 a 5 minutos, utilizando exclusivamente as funcionalidades já implementadas e documentadas no README.md.
+
+Crie o arquivo docs/demonstracao.md contendo:
+
+1. Apresentação do objetivo acadêmico do projeto.
+2. Explicação resumida da arquitetura em camadas.
+3. Comandos para ativar a .venv e iniciar a API com make run.
+4. Acesso ao Swagger em http://127.0.0.1:8000/docs.
+5. Demonstração de criação, consulta, atualização e conclusão de tarefas.
+6. Demonstração do filtro por status.
+7. Demonstração do endpoint POST /tarefas/sugerir-prioridade utilizando o fallback local, sem chave OpenAI.
+8. Exemplos de validações HTTP 422 e 404.
+9. Demonstração dos testes automatizados com make test.
+10. Explicação resumida da participação do ChatGPT, Codex e revisão humana.
+11. Encerramento com as limitações e possíveis melhorias futuras.
+
+Requisitos:
+- Organize o roteiro em ordem de apresentação, com tempo estimado por etapa.
+- Inclua exemplos JSON prontos para utilizar no Swagger.
+- Utilize somente endpoints e campos confirmados no código.
+- Explique como demonstrar o fallback local sem chamadas reais à OpenAI.
+- Considere que o banco pode conter tarefas anteriores; não dependa de IDs fixos.
+- Mantenha linguagem simples, adequada para apresentação ao professor.
+
+Restrições:
+- Crie exclusivamente docs/demonstracao.md.
+- Não altere código Python, testes, README.md, Makefile ou docs/prompts.md.
+- Não execute instalações, testes ou chamadas reais à OpenAI.
+- Não crie commits, tags ou publique nada no GitHub.
+
+Ao finalizar:
+1. Apresente o conteúdo completo de docs/demonstracao.md.
+2. Execute git diff --check.
+3. Execute git status.
+4. Aguarde minha revisão humana antes de qualquer commit.
+```
+
+**Resultado obtido:**
+
+- Criado exclusivamente `docs/demonstracao.md` na implementação, após consulta ao README, AGENTS.md, Makefile e código dos endpoints, schemas e serviços de sugestão.
+- Organizado um roteiro de 4 minutos e 45 segundos, com preparação prévia, tempos por etapa, falas sugeridas e exemplos JSON para o Swagger.
+- Documentados ativação da `.venv`, `make run`, acesso ao Swagger, criação, consulta, atualização parcial, conclusão, filtros e sugestão de prioridade com origem local.
+- Orientado iniciar o servidor com `OPENAI_API_KEY` ausente e timeout válido, sem carregar `.env` automaticamente. O roteiro utiliza o ID efetivamente retornado pela criação e demonstra 404 após excluir somente a tarefa da apresentação.
+- Incluídas demonstrações de HTTP 422, `make test`, participação de ChatGPT e Codex, revisão humana, limitações e melhorias futuras.
+- O roteiro cita os 355 testes aprovados na Etapa 3.3 como resultado anterior e orienta apresentar o resultado real obtido durante a demonstração. Não foram executados testes nesta etapa.
+- O conteúdo completo foi apresentado ao usuário. `git diff --check` passou; o Git mostrou somente `docs/demonstracao.md` como arquivo não rastreado antes do registro autorizado.
+- Após aprovação, este registro foi acrescentado ao final de `docs/prompts.md`, preservando integralmente o conteúdo anterior, para o commit autorizado dos dois documentos.
+- Não foram executadas instalações ou chamadas reais à OpenAI, criadas tags ou realizadas publicações no GitHub.
+
+**Validação humana:** concluída e aprovada em 12/10/2026. O usuário informou que revisou o conteúdo completo de `docs/demonstracao.md` e considerou o roteiro adequado, sem necessidade de alterações obrigatórias. Autorizou o registro da etapa e o commit exclusivamente de `docs/demonstracao.md` e `docs/prompts.md`, com a mensagem `docs: adiciona roteiro de demonstracao academica`.
+
+**Refinamentos realizados:** nenhum; o roteiro aprovado foi preservado sem alterações na preparação do commit. A próxima etapa depende de confirmação do usuário.
