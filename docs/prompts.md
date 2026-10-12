@@ -1531,3 +1531,52 @@ O prompt foi acompanhado de uma referência ao arquivo `docs/prompts.md` no edit
 **Validação humana:** concluída e aprovada. O usuário informou que revisou o conteúdo completo de `README.md`, considerou-o adequado e não identificou correções obrigatórias. Autorizou o registro desta etapa e o commit exclusivamente de `README.md` e `docs/prompts.md`, com a mensagem `docs: finaliza README academico da Unidade V`. A próxima etapa depende de confirmação posterior.
 
 **Refinamentos realizados:** nenhuma correção obrigatória foi solicitada na revisão humana. Não foram alterados código, testes, dependências ou funcionalidades, instalados pacotes, criadas tags, feitas chamadas à OpenAI ou publicações no GitHub.
+
+## Etapa 3.2.1 — Criação do .env.example
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** documentar as variáveis de ambiente utilizadas pela aplicação em um arquivo de exemplo seguro, preservando os valores padrão e o mecanismo atual de configuração.
+
+**Prompt original:**
+
+```text
+Vamos iniciar a Etapa 3.2.1 — Configuração de ambiente da Unidade V.
+
+Objetivo: criar o arquivo .env.example no projeto micro-api-tarefas-python, documentando as variáveis de ambiente realmente utilizadas pela aplicação.
+
+Instruções:
+
+1. Confira no código quais variáveis de ambiente são utilizadas.
+2. Crie exclusivamente o arquivo .env.example, sem credenciais reais.
+3. Documente DATABASE_URL, OPENAI_API_KEY, OPENAI_MODEL e OPENAI_TIMEOUT_SECONDS, desde que confirmadas no código.
+4. Utilize exemplos seguros e comentários explicativos.
+5. Preserve os valores padrão efetivamente implementados.
+6. Explique nos comentários que a aplicação não carrega automaticamente arquivos .env.
+7. Não instale python-dotenv nem altere o mecanismo atual de configuração.
+8. Não modifique código Python, testes, README.md, .gitignore ou docs/prompts.md nesta etapa.
+9. Não execute chamadas reais à OpenAI.
+10. Não crie commits, tags ou publique nada.
+
+Ao finalizar:
+- Mostre o conteúdo completo de .env.example.
+- Confirme que não contém credenciais reais.
+- Execute git status.
+- Aguarde minha revisão humana antes de qualquer commit.
+```
+
+O prompt foi acompanhado de uma referência ao arquivo `README.md` no editor.
+
+**Resultado obtido:**
+
+- Conferidas as leituras de variáveis em `app/database.py` e `app/integrations/openai_priority_client.py`.
+- Criado somente `.env.example`, documentando `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` e `OPENAI_TIMEOUT_SECONDS`.
+- O exemplo de DATABASE_URL ficou comentado para preservar o caminho absoluto de `tarefas.db` calculado pela aplicação. A alternativa relativa está identificada como opcional e dependente do diretório de execução.
+- Mantidos `OPENAI_API_KEY` vazio, modelo `gpt-5-nano` e timeout `10`; comentários explicam o fallback local, a validação do timeout e que a aplicação não carrega `.env` automaticamente.
+- O conteúdo completo foi apresentado ao usuário. Confirmada ausência de credenciais reais; o Git inicialmente mostrou apenas `?? .env.example`.
+- Após aprovação humana, este registro foi acrescentado ao final de `docs/prompts.md`, sem modificar seu conteúdo anterior.
+- Nesta preparação do commit, verificados o conteúdo seguro de `.env.example` e `git diff --check`. Não foram alterados código Python, testes, README, .gitignore ou dependências, nem executadas chamadas reais à OpenAI ou publicações no GitHub.
+
+**Validação humana:** concluída e aprovada. O usuário informou que revisou o conteúdo de `.env.example` e o considerou adequado aos requisitos da Unidade V. Autorizou o registro desta etapa e o commit exclusivamente de `.env.example` e `docs/prompts.md`, com a mensagem `docs: adiciona exemplo de configuracao de ambiente`. A próxima etapa depende de confirmação posterior.
+
+**Refinamentos realizados:** nenhuma correção foi solicitada; os padrões e o mecanismo de configuração da aplicação foram preservados.
