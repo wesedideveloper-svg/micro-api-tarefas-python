@@ -898,3 +898,141 @@ O prompt foi acompanhado de uma referência ao arquivo `tests/test_task_service.
 **Validação humana:** concluída. O usuário aprovou a revisão humana final da Etapa 2.5, considerando o refinamento no tratamento de `refresh()`, os dois novos casos e a suíte completa com 189 testes aprovados. Autorizou o commit somente de `app/services/`, `tests/test_task_service.py` e `docs/prompts.md`, com a mensagem `feat: adiciona camada service de tarefas`.
 
 **Refinamentos realizados:** refresh separado do tratamento de falhas de escrita, com cobertura explícita da persistência após commit mesmo quando a leitura posterior falha. O total da suíte passou de 187 para 189 testes aprovados.
+
+## Etapa 2.6 — Endpoints CRUD com FastAPI
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** disponibilizar o CRUD REST de tarefas, reutilizando o Service, com inicialização explícita das tabelas e documentação automática no Swagger.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.6 — Endpoints CRUD com FastAPI do projeto acadêmico micro-api-tarefas-python.
+
+A Etapa 2.5 foi concluída no commit 75ea94f, com 189 testes aprovados.
+
+Antes de implementar, leia integralmente:
+- README.md e AGENTS.md, se existirem
+- docs/prompts.md
+- app/main.py
+- app/database.py
+- app/models.py
+- app/schemas.py
+- app/enums.py
+- app/repositories/task_repository.py
+- app/services/task_service.py
+- Os testes existentes relevantes
+
+**Objetivo:** disponibilizar as operações CRUD de tarefas pela API REST, reutilizando o Service existente, com documentação automática no Swagger.
+
+### 1. Endpoints
+
+Implementar:
+
+- POST /tarefas — criar tarefa, retornar HTTP 201 e TaskResponse.
+- GET /tarefas — listar tarefas, retornar HTTP 200 e list[TaskResponse].
+- GET /tarefas/{task_id} — consultar tarefa, retornar HTTP 200 e TaskResponse.
+- PATCH /tarefas/{task_id} — atualizar parcialmente, retornar HTTP 200 e TaskResponse.
+- DELETE /tarefas/{task_id} — excluir tarefa, retornar HTTP 204 sem corpo.
+
+### 2. Organização
+
+Preferir um APIRouter em app/api/tasks.py, com app/api/__init__.py, registrando o router em app/main.py.
+
+Utilizar Depends(get_db) para receber a sessão SQLAlchemy por requisição e construir TaskService(session).
+
+Usar os schemas TaskCreate, TaskUpdate e TaskResponse já existentes.
+
+### 3. Tratamento de erros
+
+- Converter TaskNotFoundError em HTTP 404, com mensagem clara.
+- Deixar o FastAPI/Pydantic tratar entradas inválidas com HTTP 422.
+- Preservar HTTP 500 para erros internos inesperados, sem expor detalhes sensíveis.
+- Não implementar autenticação ou tratamento genérico desnecessário.
+
+### 4. Banco de dados
+
+Garantir que a tabela tasks exista ao executar a aplicação, usando Base.metadata.create_all(bind=engine) em um ponto explícito e adequado do ciclo de inicialização do FastAPI.
+
+Não criar tabelas durante a importação dos módulos e não introduzir Alembic nesta etapa.
+
+Preservar a configuração existente de SQLite e o gerenciamento de sessões.
+
+### 5. Testes
+
+Criar tests/test_task_api.py utilizando TestClient e um banco SQLite temporário, com substituição de get_db para isolamento.
+
+Cobrir:
+- POST com dados válidos, defaults e HTTP 201.
+- GET de lista vazia e com tarefas.
+- GET por ID existente e inexistente.
+- PATCH parcial, incluindo descricao=None.
+- DELETE com HTTP 204 e corpo vazio.
+- HTTP 404 para GET, PATCH e DELETE inexistentes.
+- HTTP 422 para dados inválidos e campos extras.
+- Persistência entre requisições de teste.
+- Preservação de GET /health.
+- Disponibilidade de /docs e /openapi.json.
+
+Evitar duplicar desnecessariamente os testes já existentes das camadas inferiores.
+
+### 6. Restrições
+
+- Não alterar Repository, Service, schemas, enums ou modelos sem defeito comprovado.
+- Não implementar filtros, endpoint específico de conclusão, integração com IA, autenticação, paginação ou frontend.
+- Não adicionar dependências sem necessidade.
+- Não alterar README.md ou AGENTS.md.
+- Não realizar commit.
+- Não avançar para a próxima etapa.
+
+### 7. Documentação e validação
+
+Atualizar docs/prompts.md com o prompt, decisões técnicas, arquivos alterados, testes executados e aprovação humana pendente.
+
+Executar:
+- Suíte completa com Pytest.
+- pip check.
+- git diff --check.
+- git status.
+
+Ao finalizar, informar:
+- Arquivos criados e modificados.
+- Quantidade total de testes aprovados.
+- Decisões técnicas.
+- Possíveis riscos e avisos.
+- Instruções para executar a aplicação e acessar o Swagger.
+
+**Não realizar commit. Aguarde minha revisão humana antes de avançar.**
+```
+
+**Arquivos criados:** `app/api/__init__.py`, `app/api/tasks.py`, `tests/conftest.py` e `tests/test_task_api.py`.
+
+**Arquivos modificados:** `app/main.py` para registro do router, lifespan e handler de tarefa inexistente; `tests/test_health.py` para usar o cliente isolado; este documento para registrar a etapa. Repository, Service, schemas, enums, modelos, configuração do banco, dependências, README e AGENTS permaneceram intactos.
+
+**Decisões técnicas:**
+
+- APIRouter com prefixo `/tarefas` e tag `Tarefas`. POST retorna 201; GET e PATCH retornam 200; DELETE retorna `Response` com 204 e nenhum corpo.
+- Cada endpoint síncrono recebe `Session` por `Depends(get_db)`, constrói `TaskService(session)` e delega a operação correspondente. Commit e rollback continuam exclusivos do Service.
+- Entradas usam `TaskCreate` e `TaskUpdate`; saídas usam `response_model=TaskResponse` ou `list[TaskResponse]`. IDs de caminho são inteiros positivos; valores inválidos produzem 422.
+- Handler específico de `TaskNotFoundError` em `app/main.py` retorna 404 e `{"detail": "Tarefa <id> não encontrada."}`. As respostas 404 são documentadas nas rotas por ID. Não há captura genérica de exceções: erros inesperados mantêm o 500 padrão sem detalhes internos, com debug desativado por padrão.
+- `Base.metadata.create_all(bind=engine)` executa no lifespan antes de aceitar requisições. Os modelos são registrados pela importação das rotas e do Service, mas não há abertura de conexão ou criação de tabelas na importação.
+- Fixture compartilhada `client` em `tests/conftest.py` usa arquivo SQLite próprio em `tmp_path`, substitui `get_db` por sessões desse banco e troca a engine referenciada pelo lifespan. A fixture não cria tabelas previamente: o lifespan real faz isso. Overrides são restaurados e a engine de teste é descartada ao terminar.
+- O teste existente de `/health` foi adaptado para essa fixture, evitando que a nova inicialização acessasse o banco de desenvolvimento. O comportamento esperado do endpoint permaneceu igual.
+- `create_all()` cria tabelas ausentes, mas não migra tabelas já existentes. Falhas posteriores ao commit (por exemplo no refresh do Service) ainda podem produzir HTTP 500 com a operação já persistida; o comportamento do Service aprovado foi preservado.
+
+**Resultados reais e verificações executadas:**
+
+- Criados 27 casos em `tests/test_task_api.py`; preservado o teste de `/health`, agora isolado. Cobertos códigos HTTP, JSON de resposta/defaults, persistência entre requisições, atualização parcial e descrição nula, exclusão sem corpo, 404 dos três métodos por ID, 422 de POST/PATCH e IDs inválidos, Swagger/OpenAPI, 500 sem exposição da mensagem interna, criação das tabelas no lifespan e importação de `app.main` sem conexão ou criação de tabelas.
+- Executado `timeout 45s .venv/bin/python -m pytest -q` fora da restrição que afetou o TestClient anteriormente: **216 testes aprovados em 3,35 s**, incluindo os 189 casos existentes e os 27 novos casos da API.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada.
+- `git diff --check`: sem erros.
+- `git status --short`: modificados `app/main.py`, `tests/test_health.py` e `docs/prompts.md`; novos `app/api/`, `tests/conftest.py` e `tests/test_task_api.py`.
+- Nenhum commit foi realizado. Nenhuma funcionalidade da próxima etapa foi implementada.
+
+**Execução local:** na raiz, usar `.venv/bin/python -m uvicorn app.main:app --reload`. O lifespan criará a tabela `tasks` no SQLite configurado por `DATABASE_URL` (padrão `tarefas.db`). Swagger em `http://127.0.0.1:8000/docs`, OpenAPI em `http://127.0.0.1:8000/openapi.json` e saúde em `http://127.0.0.1:8000/health`.
+
+**Validação humana:** concluída e aprovada. O usuário informou que revisou `app/api/tasks.py`, `app/main.py`, `tests/conftest.py` e `tests/test_task_api.py`. Nenhuma correção obrigatória foi identificada. A Etapa 2.6 foi aprovada para commit, condicionado à repetição bem-sucedida da suíte completa, `pip check` e `git diff --check`. Foram autorizados somente `app/api/`, `app/main.py`, `tests/conftest.py`, `tests/test_task_api.py`, `tests/test_health.py` e `docs/prompts.md`, com a mensagem `feat: adiciona endpoints CRUD de tarefas`.
+
+**Refinamentos realizados:** o teste de saúde passou a compartilhar a fixture isolada para preservar o banco de desenvolvimento durante o lifespan. Não foram necessárias correções após a primeira execução da suíte completa.
