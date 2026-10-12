@@ -177,3 +177,55 @@ Apresente as alterações realizadas para minha revisão. Não realize commit.
 **Validação humana:** pendente de revisão deste documento pelo usuário.
 
 **Refinamentos realizados:** nenhum registrado até a criação deste documento.
+
+## Etapa 2.1 — Enums de status e prioridade das tarefas
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** definir os valores permitidos de status e prioridade, usando `str` e `Enum` com compatibilidade com Python 3.10, em uma entrega independente da implementação de schemas e persistência.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.1 do projeto acadêmico micro-api-tarefas-python.
+
+Leia README.md, AGENTS.md e docs/prompts.md.
+
+O planejamento da modelagem foi aprovado, mas decidimos separar as funcionalidades em pequenas entregas, cada uma com seu próprio commit.
+
+Nesta etapa, implemente exclusivamente:
+
+1. Criar app/enums.py.
+2. Definir TaskStatus com os valores pendente e concluida.
+3. Definir TaskPriority com os valores baixa, media e alta.
+4. Utilizar str e Enum, mantendo compatibilidade com Python 3.10.
+5. Criar tests/test_task_enums.py para validar os valores dos enums.
+6. Atualizar docs/prompts.md com o registro desta etapa, incluindo o prompt, os resultados e os testes efetivamente executados.
+
+Restrições:
+
+- Não criar schemas Pydantic.
+- Não implementar SQLAlchemy ou SQLite.
+- Não criar Repository, Service ou endpoints CRUD.
+- Não alterar README.md, AGENTS.md ou app/main.py.
+- Não realizar commit.
+
+Execute os testes automatizados, incluindo o teste existente de /health.
+
+Ao finalizar, apresente os arquivos criados ou alterados, os resultados dos testes e o git status.
+
+Aguarde minha revisão e aprovação antes de continuar.
+```
+
+**Resultado obtido:**
+
+- Criado `app/enums.py` com `TaskStatus.PENDENTE = "pendente"`, `TaskStatus.CONCLUIDA = "concluida"`, `TaskPriority.BAIXA = "baixa"`, `TaskPriority.MEDIA = "media"` e `TaskPriority.ALTA = "alta"`. As duas classes herdam de `str` e `Enum` da biblioteca padrão.
+- Criado `tests/test_task_enums.py` com testes parametrizados para os conjuntos de valores permitidos, herança de `str` e `Enum`, correspondência entre membros e valores, construção por valor e rejeição de valores inválidos.
+- Executado `timeout 15s .venv/bin/python -m pytest -q` no ambiente restrito: a execução ficou sem resposta e terminou com código 124, por limite de tempo. Essa tentativa não forneceu resultado de aprovação ou reprovação dos testes.
+- Executado `timeout 30s .venv/bin/python -m pytest -q` fora dessa restrição: **10 testes aprovados em 0,32 s**, incluindo os nove casos dos enums e o teste existente de `/health`.
+- Emitido um aviso de depreciação interno do Starlette/AnyIO sobre o alias `anyio.abc.BlockingPortal`, sem falhas nos testes.
+- Não foram instaladas dependências, criados schemas, configurada persistência ou implementadas camadas e endpoints de tarefas. `README.md`, `AGENTS.md` e `app/main.py` não foram alterados. Nenhum commit foi realizado.
+
+**Validação humana:** o usuário aprovou o planejamento da modelagem. Os arquivos app/enums.py e tests/test_task_enums.py foram posteriormente revisados com auxílio do ChatGPT. A implementação dos enums e os testes foram considerados corretos e adequados ao escopo acadêmico. A execução do Pytest apresentou 10 testes aprovados, incluindo /health. A Etapa 2.1 foi aprovada para commit.
+
+**Refinamentos realizados:** a suíte foi repetida fora do ambiente restrito após a primeira tentativa atingir o limite de tempo. Não houve alteração de código motivada por falha de teste nem ampliação do escopo.
