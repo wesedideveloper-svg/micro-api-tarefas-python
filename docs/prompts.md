@@ -730,3 +730,171 @@ Ao finalizar, apresente:
 **Refinamentos realizados:** ajustado exclusivamente `test_repository_does_not_manage_received_session` para limitar os mocks de `commit`, `rollback` e `close` ao bloco `monkeypatch.context()`. Os métodos originais são restaurados ao sair do bloco, inclusive em caso de exceção, antes da limpeza normal da fixture. Os mocks continuam lançando erro se o Repository chamar esses métodos e agora também têm verificações explícitas de `assert_not_called()`. Nenhum caso foi adicionado ou removido, e o Repository não foi alterado.
 
 Após o refinamento, executados `timeout 30s .venv/bin/python -m pytest -q`, `.venv/bin/python -m pip check` e `git diff --check`. Resultado: **167 testes aprovados em 1,88 s**, com um aviso de depreciação interno do Starlette/AnyIO e sem falhas; nenhuma incompatibilidade de dependências ou erro no diff. O commit autorizado deve conter somente `app/repositories/__init__.py`, `app/repositories/task_repository.py`, `tests/test_task_repository.py` e `docs/prompts.md`, com a mensagem `feat: adiciona repository de tarefas`.
+
+## Etapa 2.5 — Service de tarefas e controle de transações
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** implementar exclusivamente o Service, reutilizando o Repository e controlando commit, rollback e a exceção de tarefa inexistente, sem dependência de HTTP.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.5 do projeto acadêmico micro-api-tarefas-python.
+
+Leia integralmente README.md, AGENTS.md, docs/prompts.md, app/database.py, app/models.py, app/schemas.py, app/enums.py e app/repositories/task_repository.py.
+
+A Etapa 2.4 foi concluída, revisada e registrada no commit 23f242f, com 167 testes aprovados.
+
+**Objetivo:** implementar exclusivamente a camada Service, responsável pelas operações de negócio e pelo controle de transações, mantendo compatibilidade com Python 3.10.12.
+
+### 1. Estrutura
+
+Criar:
+- app/services/__init__.py
+- app/services/task_service.py
+- tests/test_task_service.py
+
+### 2. TaskService
+
+Implementar uma classe TaskService que receba uma Session do SQLAlchemy pelo construtor e utilize TaskRepository internamente.
+
+Disponibilizar os métodos:
+
+- create(data: TaskCreate) -> Task
+- get_by_id(task_id: int) -> Task
+- list_all() -> list[Task]
+- update(task_id: int, data: TaskUpdate) -> Task
+- delete(task_id: int) -> None
+
+Regras:
+
+1. O Service deve reutilizar o Repository, sem duplicar consultas SQL.
+2. create, update e delete devem executar commit() somente após a operação ser concluída com sucesso.
+3. Em caso de erro durante operações de escrita, executar rollback() e propagar a exceção.
+4. Após create e update, garantir que o objeto retornado esteja consistente com os dados persistidos.
+5. get_by_id e list_all não devem executar commit().
+6. Para tarefa inexistente, get_by_id, update e delete devem lançar uma exceção específica da aplicação, por exemplo TaskNotFoundError, definida na camada Service ou em um módulo simples de exceções.
+7. Não lançar HTTPException dentro do Service. A conversão para HTTP 404 ficará para a futura camada API.
+8. Manter as regras de validação nos schemas Pydantic e as operações SQL no Repository.
+9. Não abrir nem fechar a Session recebida pelo Service.
+10. Não implementar novas regras de negócio não previstas no projeto.
+
+### 3. Testes
+
+Criar testes automatizados com SQLite temporário, sem utilizar o banco de desenvolvimento.
+
+Cobrir:
+
+- Criação de tarefa com commit e persistência.
+- Consulta por ID existente e inexistente.
+- Listagem vazia e listagem ordenada.
+- Atualização parcial e persistência após commit.
+- Remoção da descrição com descricao=None.
+- Exclusão e persistência da exclusão.
+- Exceção específica para tarefa inexistente.
+- Rollback quando ocorrer erro em create, update ou delete.
+- Ausência de commit em operações de leitura.
+- Garantia de que o Service não fecha a sessão.
+- Isolamento entre os testes.
+
+Evitar duplicar desnecessariamente testes já existentes dos schemas, modelos e Repository.
+
+### 4. Restrições
+
+- Não alterar app/main.py.
+- Não implementar endpoints CRUD.
+- Não modificar Repository, modelos, schemas, enums ou configuração do banco sem defeito comprovado e justificativa.
+- Não implementar integração com IA.
+- Não criar migrações ou novas dependências sem necessidade.
+- Não alterar README.md ou AGENTS.md.
+- Não realizar commit.
+- Não implementar funcionalidades fora do escopo.
+
+### 5. Documentação
+
+Atualizar docs/prompts.md com o prompt original, arquivos criados, decisões técnicas, resultados reais dos testes e validação humana pendente.
+
+### 6. Verificações
+
+Execute:
+- Suíte completa com Pytest.
+- pip check.
+- git diff --check.
+- git status.
+
+Ao finalizar, apresente os arquivos criados ou modificados, decisões técnicas, quantidade de testes aprovados, eventuais avisos e possíveis riscos para revisão humana.
+
+**Aguarde minha revisão e aprovação antes de realizar qualquer commit ou avançar para a próxima etapa.**
+```
+
+**Arquivos criados:** `app/services/__init__.py`, `app/services/task_service.py` e `tests/test_task_service.py`. Este documento foi atualizado. Nenhum arquivo das camadas anteriores ou dependência foi alterado.
+
+**Decisões técnicas:**
+
+- `TaskService(session)` recebe uma sessão existente e instancia `TaskRepository` com essa mesma sessão. Não abre ou fecha sessões e não executa consultas SQL diretamente.
+- `create`, `update` e `delete` chamam a operação do Repository e somente então confirmam a transação com `commit()`.
+- `create` e `update` executam `refresh()` após commit, para retornar o modelo com os dados persistidos carregados, mesmo com a expiração padrão do SQLAlchemy após commit.
+- Erros nas operações de escrita levam a `rollback()` e são propagados com `raise`, sem conversão para HTTP.
+- `TaskNotFoundError`, definida no mesmo módulo do Service, contém `task_id` e mensagem em português. `get_by_id`, `update` e `delete` lançam essa exceção quando o Repository indica ausência de tarefa. Update/delete inexistentes não fazem commit e passam pelo rollback das escritas.
+- `get_by_id` e `list_all` delegam ao Repository e não executam commit.
+- Validações continuam nos schemas e o tratamento dos campos omitidos continua no Repository. Não foram acrescentadas regras de negócio, endpoints, inicialização automática, IA ou migrações.
+- O Service controla a transação inteira da sessão recebida: outras alterações pendentes também podem ser confirmadas ou revertidas. Recomenda-se uma sessão por unidade de trabalho.
+- Após o refinamento abaixo, uma falha de `refresh()` posterior a um commit bem-sucedido é propagada sem executar rollback. Os dados já confirmados permanecem persistidos. Essa limitação deve ser considerada na futura camada API; não há promessa de atomicidade entre commit e leitura posterior.
+
+**Resultado obtido e verificações executadas:**
+
+- Criados 20 casos com SQLite temporário por teste, `autoflush=False`, sessões gerenciadas pelas fixtures e descarte das engines ao terminar.
+- Cobertos criação/persistência, consulta existente, exceção específica nos três métodos por ID, listagem vazia/ordenada, leituras sem commit, atualização parcial e remoção da descrição, exclusão persistida e isolamento entre bancos temporários.
+- Seis casos parametrizados simulam falhas após a operação real do Repository (com flush já executado) ou no commit, para criação, atualização e exclusão. Verificam chamada de rollback, preservação da exceção original, ausência de commit prematuro e dados originais confirmados por nova sessão. Também verificam que a sessão continua utilizável após rollback.
+- Dois casos verificam a ordem commit/refresh e os dados retornados para create/update. Outro caso impede `close()` durante os cinco métodos do Service. Todos os patches ficam em `monkeypatch.context()`, restaurando os métodos antes da limpeza das fixtures.
+- Executado `timeout 30s .venv/bin/python -m pytest -q`, fora da restrição que afetou o TestClient anteriormente: **187 testes aprovados em 2,57 s**, sendo 20 do Service, 20 do Repository, 33 da persistência, 104 dos schemas, nove dos enums e um de `/health`.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada.
+- `git diff --check`: sem erros.
+- `git status --short`: `docs/prompts.md` modificado, `app/services/` e `tests/test_task_service.py` novos. Nenhum commit foi realizado.
+
+**Validação humana:** concluída. O usuário revisou `app/services/task_service.py` e `tests/test_task_service.py`, considerou os 20 testes iniciais adequados e solicitou o refinamento abaixo. Após o refinamento no tratamento de `refresh()` e os 189 testes aprovados, aprovou a revisão humana final da Etapa 2.5 e autorizou o commit com a mensagem `feat: adiciona camada service de tarefas`.
+
+**Refinamentos realizados:** não foram necessárias correções após a primeira execução da suíte completa. Nenhuma alteração nas camadas existentes foi necessária.
+
+### Refinamento da Etapa 2.5 — Falhas no refresh após commit
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** separar falhas da operação de escrita e do commit das falhas de leitura posteriores à confirmação da transação.
+
+**Prompt original:**
+
+```text
+A revisão humana dos arquivos app/services/task_service.py e tests/test_task_service.py foi realizada.
+
+Os 20 testes existentes foram considerados adequados. Antes da aprovação final da Etapa 2.5, realizar somente o seguinte refinamento:
+
+1. Em TaskService.create() e TaskService.update(), manter repository e commit dentro do try/except, mas mover session.refresh(task) para depois do bloco de tratamento de exceções.
+2. Preservar rollback e propagação da exceção em falhas do Repository ou do commit.
+3. Adicionar dois testes simulando falha no refresh(), um para create e outro para update.
+4. Confirmar que a exceção original do refresh é propagada e que a operação já confirmada permanece persistida.
+5. Não alterar Repository, schemas, modelos, endpoints ou outras funcionalidades.
+6. Atualizar docs/prompts.md com o refinamento e seus resultados.
+7. Executar novamente a suíte completa, pip check e git diff --check.
+8. Apresentar o resultado e o git status.
+
+Não realizar commit ainda. Aguardar minha aprovação final.
+```
+
+O prompt foi acompanhado de uma referência ao arquivo `tests/test_task_service.py` no editor.
+
+**Alterações e resultado obtido:**
+
+- Em `app/services/task_service.py`, `create()` e `update()` mantêm a operação do Repository e o commit no `try/except`. O refresh e o retorno agora ocorrem depois desse bloco. Falhas do Repository e do commit continuam causando rollback e propagação da exceção; falhas do refresh são propagadas sem rollback.
+- Em `tests/test_task_service.py`, adicionados dois casos parametrizados em `test_refresh_failure_propagates_without_undoing_commit`, um de criação e um de atualização. Os testes verificam a identidade da exceção original, uma chamada a commit e refresh, nenhuma chamada a rollback e os dados confirmados por uma nova sessão. A atualização também verifica a preservação do ID e a remoção da descrição persistida.
+- Os patches ficam em `monkeypatch.context()`, sem interferir na limpeza das fixtures. Nenhum teste existente foi removido, e nenhuma outra camada foi alterada.
+- Executado `timeout 30s .venv/bin/python -m pytest -q` fora da restrição que afetou o TestClient anteriormente: **189 testes aprovados em 2,39 s**, sendo 22 do Service, 20 do Repository, 33 da persistência, 104 dos schemas, nove dos enums e um de `/health`.
+- Um aviso interno de depreciação do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada. `git diff --check`: sem erros.
+- `git status --short`: `docs/prompts.md` modificado, `app/services/` e `tests/test_task_service.py` novos, ainda sem commit nesta etapa.
+
+**Validação humana:** concluída. O usuário aprovou a revisão humana final da Etapa 2.5, considerando o refinamento no tratamento de `refresh()`, os dois novos casos e a suíte completa com 189 testes aprovados. Autorizou o commit somente de `app/services/`, `tests/test_task_service.py` e `docs/prompts.md`, com a mensagem `feat: adiciona camada service de tarefas`.
+
+**Refinamentos realizados:** refresh separado do tratamento de falhas de escrita, com cobertura explícita da persistência após commit mesmo quando a leitura posterior falha. O total da suíte passou de 187 para 189 testes aprovados.
