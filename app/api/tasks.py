@@ -2,10 +2,11 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Response, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.enums import TaskStatus
 from app.models import Task
 from app.schemas import TaskCreate, TaskResponse, TaskUpdate
 from app.services.task_service import TaskService
@@ -24,8 +25,11 @@ def create_task(data: TaskCreate, session: DatabaseSession) -> Task:
 
 
 @router.get("", response_model=list[TaskResponse], summary="Listar tarefas")
-def list_tasks(session: DatabaseSession) -> list[Task]:
-    return TaskService(session).list_all()
+def list_tasks(
+    session: DatabaseSession,
+    status: Annotated[TaskStatus | None, Query(description="Filtrar tarefas por status")] = None,
+) -> list[Task]:
+    return TaskService(session).list_all(status)
 
 
 @router.get("/{task_id}", response_model=TaskResponse, responses=NOT_FOUND,
@@ -38,6 +42,12 @@ def get_task(task_id: TaskId, session: DatabaseSession) -> Task:
               summary="Atualizar tarefa parcialmente")
 def update_task(task_id: TaskId, data: TaskUpdate, session: DatabaseSession) -> Task:
     return TaskService(session).update(task_id, data)
+
+
+@router.patch("/{task_id}/concluir", response_model=TaskResponse, responses=NOT_FOUND,
+              summary="Concluir tarefa")
+def complete_task(task_id: TaskId, session: DatabaseSession) -> Task:
+    return TaskService(session).complete(task_id)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT,

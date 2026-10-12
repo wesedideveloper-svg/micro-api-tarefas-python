@@ -39,7 +39,7 @@ def test_get_existing_task(service):
     assert service.get_by_id(task.id) is task
 
 
-@pytest.mark.parametrize("operation", ["get_by_id", "update", "delete"])
+@pytest.mark.parametrize("operation", ["get_by_id", "update", "delete", "complete"])
 def test_missing_task_raises_application_exception(service, monkeypatch, operation):
     with monkeypatch.context() as patch:
         commit = Mock(side_effect=AssertionError("Commit para tarefa inexistente"))
@@ -91,13 +91,14 @@ def test_delete_commits(service, sessions):
             TaskService(verification).get_by_id(task_id)
 
 
-@pytest.mark.parametrize("operation", ["create", "update", "delete"])
+@pytest.mark.parametrize("operation", ["create", "update", "delete", "complete"])
 @pytest.mark.parametrize("failure_point", ["repository", "commit"])
 def test_write_failure_rolls_back_and_propagates_original_exception(
     service, sessions, monkeypatch, operation, failure_point
 ):
     task_id = service.create(TaskCreate(titulo="Original", descricao="Descrição")).id
-    original_operation = getattr(service.repository, operation)
+    repository_method = "update" if operation == "complete" else operation
+    original_operation = getattr(service.repository, repository_method)
     failure = RuntimeError("Falha simulada")
 
     def fail_after_flush(*args):
@@ -109,7 +110,7 @@ def test_write_failure_rolls_back_and_propagates_original_exception(
         commit = Mock(wraps=service.session.commit)
         patch.setattr(service.session, "rollback", rollback)
         if failure_point == "repository":
-            patch.setattr(service.repository, operation, fail_after_flush)
+            patch.setattr(service.repository, repository_method, fail_after_flush)
         else:
             commit.side_effect = failure
         patch.setattr(service.session, "commit", commit)
@@ -118,6 +119,8 @@ def test_write_failure_rolls_back_and_propagates_original_exception(
                 service.create(TaskCreate(titulo="Não confirmada"))
             elif operation == "update":
                 service.update(task_id, TaskUpdate(titulo="Alterada", descricao=None))
+            elif operation == "complete":
+                service.complete(task_id)
             else:
                 service.delete(task_id)
         assert error.value is failure
@@ -126,10 +129,40 @@ def test_write_failure_rolls_back_and_propagates_original_exception(
 
     with sessions() as verification:
         tasks = TaskService(verification).list_all()
-        assert [(task.id, task.titulo, task.descricao) for task in tasks] == [
-            (task_id, "Original", "Descrição")
+        assert [(task.id, task.titulo, task.descricao, task.status) for task in tasks] == [
+            (task_id, "Original", "Descrição", TaskStatus.PENDENTE)
         ]
     assert service.get_by_id(task_id).titulo == "Original"
+
+
+@pytest.mark.parametrize("already_completed", [False, True])
+def test_complete_preserves_fields_and_persists(service, sessions, already_completed):
+    task = service.create(TaskCreate(titulo="Tarefa", descricao="Descrição", prioridade="alta"))
+    if already_completed:
+        service.update(task.id, TaskUpdate(status=TaskStatus.CONCLUIDA))
+    completed = service.complete(task.id)
+    assert completed.status is TaskStatus.CONCLUIDA
+    with sessions() as verification:
+        persisted = TaskService(verification).get_by_id(task.id)
+        assert (persisted.titulo, persisted.descricao, persisted.prioridade, persisted.status) == (
+            "Tarefa", "Descrição", TaskPriority.ALTA, TaskStatus.CONCLUIDA
+        )
+
+
+@pytest.mark.parametrize("status", list(TaskStatus))
+def test_filtered_reads_delegate_without_commit(service, monkeypatch, status):
+    pending = service.create(TaskCreate(titulo="Pendente"))
+    completed = service.complete(service.create(TaskCreate(titulo="Concluída")).id)
+    with monkeypatch.context() as patch:
+        commit = Mock(side_effect=AssertionError("Commit em leitura filtrada"))
+        list_all = Mock(wraps=service.repository.list_all)
+        patch.setattr(service.session, "commit", commit)
+        patch.setattr(service.repository, "list_all", list_all)
+        assert service.list_all(status) == [
+            pending if status is TaskStatus.PENDENTE else completed
+        ]
+        list_all.assert_called_once_with(status)
+        commit.assert_not_called()
 
 
 @pytest.mark.parametrize("operation", ["create", "update"])

@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from app.enums import TaskStatus
 from app.models import Task
 from app.repositories.task_repository import TaskRepository
 from app.schemas import TaskCreate, TaskUpdate
@@ -34,8 +35,11 @@ class TaskService:
             raise TaskNotFoundError(task_id)
         return task
 
-    def list_all(self) -> list[Task]:
-        return self.repository.list_all()
+    def list_all(self, status: TaskStatus | None = None) -> list[Task]:
+        return self.repository.list_all(status)
+
+    def complete(self, task_id: int) -> Task:
+        return self.update(task_id, TaskUpdate(status=TaskStatus.CONCLUIDA))
 
     def update(self, task_id: int, data: TaskUpdate) -> Task:
         try:

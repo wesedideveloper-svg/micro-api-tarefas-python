@@ -3,6 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.enums import TaskStatus
 from app.models import Task
 from app.schemas import TaskCreate, TaskUpdate
 
@@ -20,8 +21,11 @@ class TaskRepository:
     def get_by_id(self, task_id: int) -> Task | None:
         return self.session.get(Task, task_id)
 
-    def list_all(self) -> list[Task]:
-        return list(self.session.scalars(select(Task).order_by(Task.id)))
+    def list_all(self, status: TaskStatus | None = None) -> list[Task]:
+        statement = select(Task).order_by(Task.id)
+        if status is not None:
+            statement = statement.where(Task.status == status)
+        return list(self.session.scalars(statement))
 
     def update(self, task_id: int, data: TaskUpdate) -> Task | None:
         """Atualiza apenas campos enviados; retorna None se o ID não existir."""

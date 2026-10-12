@@ -70,6 +70,19 @@ def test_list_orders_by_id(repository):
     assert [task.id for task in repository.list_all()] == [10, 20, 30]
 
 
+@pytest.mark.parametrize("status", list(TaskStatus))
+def test_list_filters_by_status_in_id_order(repository, status):
+    repository.session.add_all([
+        Task(id=30, titulo="Terceira", status=status),
+        Task(id=10, titulo="Primeira", status=status),
+        Task(id=20, titulo="Outra", status=(
+            TaskStatus.CONCLUIDA if status is TaskStatus.PENDENTE else TaskStatus.PENDENTE
+        )),
+    ])
+    repository.session.flush()
+    assert [task.id for task in repository.list_all(status)] == [10, 30]
+
+
 @pytest.mark.parametrize(
     ("changes", "expected"),
     [

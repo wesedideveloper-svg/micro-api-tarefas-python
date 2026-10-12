@@ -1036,3 +1036,178 @@ Ao finalizar, informar:
 **Validação humana:** concluída e aprovada. O usuário informou que revisou `app/api/tasks.py`, `app/main.py`, `tests/conftest.py` e `tests/test_task_api.py`. Nenhuma correção obrigatória foi identificada. A Etapa 2.6 foi aprovada para commit, condicionado à repetição bem-sucedida da suíte completa, `pip check` e `git diff --check`. Foram autorizados somente `app/api/`, `app/main.py`, `tests/conftest.py`, `tests/test_task_api.py`, `tests/test_health.py` e `docs/prompts.md`, com a mensagem `feat: adiciona endpoints CRUD de tarefas`.
 
 **Refinamentos realizados:** o teste de saúde passou a compartilhar a fixture isolada para preservar o banco de desenvolvimento durante o lifespan. Não foram necessárias correções após a primeira execução da suíte completa.
+
+## Etapa 2.7 — Conclusão de tarefas e filtro por status
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** implementar exclusivamente conclusão de tarefa e filtro opcional por status, mantendo o fluxo FastAPI → Service → Repository → SQLite.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.7 — Conclusão de tarefas e filtro por status do projeto acadêmico micro-api-tarefas-python.
+
+A Etapa 2.6 foi concluída no commit b0f7d6c, com 216 testes aprovados e Git limpo.
+
+Antes de implementar, leia integralmente:
+- README.md e AGENTS.md, se existirem
+- docs/prompts.md
+- app/main.py
+- app/api/tasks.py
+- app/database.py
+- app/enums.py
+- app/models.py
+- app/schemas.py
+- app/repositories/task_repository.py
+- app/services/task_service.py
+- Os testes existentes relevantes
+
+OBJETIVO
+
+Implementar exclusivamente duas funcionalidades: conclusão de tarefa e filtro opcional por status.
+
+1. CONCLUSÃO DE TAREFA
+
+Criar o endpoint:
+
+PATCH /tarefas/{task_id}/concluir
+
+Regras:
+- Receber somente o ID na URL, sem corpo obrigatório.
+- Alterar o status para "concluida".
+- Retornar HTTP 200 com TaskResponse.
+- Se a tarefa não existir, retornar HTTP 404 usando TaskNotFoundError.
+- Se já estiver concluída, retornar HTTP 200 com a tarefa, sem erro.
+- Preservar título, descrição e prioridade.
+- Reutilizar o Repository e o Service existentes.
+- Manter o controle de transações no Service.
+- Não duplicar código desnecessariamente.
+
+2. FILTRO POR STATUS
+
+Ampliar o endpoint existente:
+
+GET /tarefas
+
+Adicionar um parâmetro opcional de consulta:
+
+status=pendente ou status=concluida
+
+Regras:
+- Sem parâmetro: retornar todas as tarefas, mantendo o comportamento atual.
+- Com status válido: retornar somente as tarefas com o status solicitado.
+- Status inválido: retornar HTTP 422.
+- Lista sem resultados: retornar HTTP 200 com [].
+- Preservar a ordenação por ID crescente.
+- Realizar a filtragem no Repository, usando SQLAlchemy, e não em memória na API.
+- Reutilizar o enum TaskStatus existente.
+- Preservar compatibilidade com list_all() e com os testes anteriores.
+
+3. ARQUITETURA
+
+Manter o fluxo:
+
+FastAPI → TaskService → TaskRepository → SQLite
+
+Implementar apenas os métodos necessários em cada camada, com alterações mínimas.
+
+Não criar novos modelos ou schemas sem necessidade.
+
+4. TESTES
+
+Adicionar testes automatizados cobrindo:
+
+- Conclusão de tarefa pendente.
+- Conclusão de tarefa já concluída.
+- Conclusão de tarefa inexistente (404).
+- Preservação dos demais campos.
+- Persistência após conclusão.
+- Filtro por status pendente.
+- Filtro por status concluída.
+- Listagem sem filtro.
+- Status inválido (422).
+- Filtro sem resultados.
+- Ordenação por ID.
+- Rollback em falhas de escrita.
+- Ausência de commit nas consultas.
+- Documentação dos novos parâmetros e endpoint no OpenAPI.
+
+Utilizar SQLite temporário nos testes, sem acessar o banco de desenvolvimento.
+
+5. RESTRIÇÕES
+
+- Não implementar IA nesta etapa.
+- Não implementar autenticação, paginação ou frontend.
+- Não adicionar dependências desnecessárias.
+- Não alterar a estrutura do banco.
+- Não modificar README.md ou AGENTS.md.
+- Não alterar o comportamento dos cinco endpoints CRUD existentes.
+- Não realizar commit.
+- Não avançar para a próxima etapa.
+
+6. DOCUMENTAÇÃO
+
+Atualizar docs/prompts.md com:
+- Prompt utilizado.
+- Arquivos criados ou alterados.
+- Decisões técnicas.
+- Resultados dos testes.
+- Aprovação humana pendente.
+
+7. VALIDAÇÃO
+
+Executar:
+- Suíte completa com Pytest.
+- pip check.
+- git diff --check.
+- git status.
+
+Ao finalizar, apresentar:
+- Arquivos modificados.
+- Quantidade de testes aprovados.
+- Decisões técnicas.
+- Eventuais riscos e avisos.
+- Exemplos de chamadas dos novos endpoints.
+
+Não realizar commit. Aguarde minha revisão humana antes de avançar.
+```
+
+**Arquivos alterados:** `app/api/tasks.py`, `app/services/task_service.py`, `app/repositories/task_repository.py`, `tests/test_task_api.py`, `tests/test_task_service.py`, `tests/test_task_repository.py` e este documento. Nenhum arquivo novo foi necessário.
+
+**Decisões técnicas:**
+
+- `TaskService.complete(task_id)` delega a `update(task_id, TaskUpdate(status=TaskStatus.CONCLUIDA))`. Reutiliza o Repository, tratamento de tarefa inexistente, commit/rollback e refresh já existentes, sem duplicar consultas nem lógica transacional.
+- A conclusão preserva os campos omitidos e aceita repetir a operação em tarefa já concluída. A repetição passa pela atualização existente e confirma a transação; não há regra adicional que impeça essa confirmação.
+- `PATCH /tarefas/{task_id}/concluir` recebe apenas ID positivo, sem corpo obrigatório, e retorna `TaskResponse` com HTTP 200. Reutiliza o handler existente para `TaskNotFoundError`/404.
+- `TaskRepository.list_all(status: TaskStatus | None = None)` mantém a chamada sem argumentos e a ordenação por ID crescente; com status, aplica `where(Task.status == status)` no SQLAlchemy. Não há filtragem em memória na API.
+- `TaskService.list_all()` recebe o mesmo filtro opcional e o encaminha ao Repository, sem commit.
+- `GET /tarefas` usa parâmetro Query opcional tipado com `TaskStatus`. FastAPI valida os valores e retorna 422 para inválidos. Sem parâmetro, a lista mantém o comportamento anterior; sem correspondências, retorna 200 com lista vazia.
+- Modelos, schemas, enums, configuração do banco, main, estrutura das tabelas e dependências foram preservados. Os cinco endpoints CRUD mantêm seus contratos, com a extensão opcional da listagem solicitada.
+
+**Testes e resultados reais:**
+
+- Adicionados 20 casos: dois no Repository, sete no Service e onze na API. Reutilizadas as fixtures SQLite temporárias existentes, sem acesso ao banco de desenvolvimento.
+- No Repository, verificada a filtragem para ambos os status com IDs inseridos fora de ordem; a saída mantém ID crescente.
+- No Service, adicionadas conclusão pendente/já concluída com campos preservados e recuperação por nova sessão; leitura filtrada delegada sem commit para ambos os status. Estendidos os testes existentes de tarefa inexistente e de falhas após flush/no commit para conclusão, verificando rollback e preservação do status pendente no banco.
+- Na API, cobertas conclusão sem corpo, repetição em tarefa já concluída, persistência, preservação dos demais campos, 404, ambos os filtros com ordenação e listagem sem filtro, três entradas inválidas com 422 e dois casos de filtro sem correspondências. O OpenAPI documenta a nova rota sem requestBody e o filtro opcional com os valores do enum.
+- Ajustada somente a assinatura do stub do teste de erro interno da listagem para aceitar o novo argumento opcional; a verificação de HTTP 500 sem detalhes sensíveis foi preservada.
+- Executado `timeout 45s .venv/bin/python -m pytest -q` fora da restrição que afetou o TestClient anteriormente: **236 testes aprovados em 4,78 s**, incluindo todos os 216 casos anteriores.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada. `git diff --check`: sem erros.
+- `git status --short`: apenas os sete arquivos desta etapa modificados. Nenhum commit foi realizado.
+
+**Exemplos de chamadas:**
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/tarefas/1/concluir
+curl 'http://127.0.0.1:8000/tarefas?status=pendente'
+curl 'http://127.0.0.1:8000/tarefas?status=concluida'
+curl http://127.0.0.1:8000/tarefas
+```
+
+Os exemplos por ID pressupõem que a tarefa exista. O Swagger permanece em `http://127.0.0.1:8000/docs`.
+
+**Validação humana:** concluída e aprovada. O usuário confirmou a aprovação humana final da Etapa 2.7, incluindo conclusão de tarefas, filtro por status e testes. Autorizou o commit somente de `app/api/tasks.py`, `app/services/task_service.py`, `app/repositories/task_repository.py`, `tests/test_task_api.py`, `tests/test_task_service.py`, `tests/test_task_repository.py` e `docs/prompts.md`, condicionado à repetição bem-sucedida da suíte completa, `pip check` e `git diff --check`, com a mensagem `feat: adiciona conclusao e filtro de tarefas`. A Etapa 2.8 não foi autorizada nesta solicitação.
+
+**Refinamentos realizados:** reutilizados os testes transacionais existentes para cobrir conclusão, sem repetir sua infraestrutura. A primeira execução da suíte completa passou; não foram necessárias correções adicionais.

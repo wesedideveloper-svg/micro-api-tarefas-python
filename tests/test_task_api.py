@@ -115,7 +115,7 @@ def test_swagger_and_openapi_document_crud(client):
 
 
 def test_unexpected_error_returns_500_without_sensitive_details(client, monkeypatch):
-    def fail(self):
+    def fail(self, status=None):
         raise RuntimeError("segredo: senha-de-teste")
 
     monkeypatch.setattr(TaskService, "list_all", fail)
@@ -143,3 +143,63 @@ def test_import_main_does_not_connect_or_create_tables(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert not database_file.exists()
+
+
+@pytest.mark.parametrize("already_completed", [False, True])
+def test_complete_task_without_body_preserves_fields_and_persists(client, already_completed):
+    task = client.post("/tarefas", json={
+        "titulo": "Tarefa", "descricao": "Descrição", "prioridade": "alta"
+    }).json()
+    if already_completed:
+        client.patch(f"/tarefas/{task['id']}", json={"status": "concluida"})
+    response = client.patch(f"/tarefas/{task['id']}/concluir")
+    assert response.status_code == 200
+    assert response.json() == task | {"status": "concluida"}
+    assert client.get(f"/tarefas/{task['id']}").json() == response.json()
+
+
+def test_complete_missing_task_returns_404(client):
+    response = client.patch("/tarefas/999/concluir")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Tarefa 999 não encontrada."}
+
+
+@pytest.mark.parametrize("status", ["pendente", "concluida"])
+def test_list_filters_by_status_and_keeps_id_order(client, status):
+    tasks = [client.post("/tarefas", json={"titulo": f"Tarefa {index}"}).json()
+             for index in range(4)]
+    for index in (1, 3):
+        tasks[index] = client.patch(f"/tarefas/{tasks[index]['id']}/concluir").json()
+    response = client.get("/tarefas", params={"status": status})
+    assert response.status_code == 200
+    assert response.json() == [task for task in tasks if task["status"] == status]
+    assert client.get("/tarefas").json() == tasks
+
+
+@pytest.mark.parametrize("status", ["invalido", "PENDENTE", ""])
+def test_invalid_status_filter_returns_422(client, status):
+    response = client.get("/tarefas", params={"status": status})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["query", "status"]
+
+
+@pytest.mark.parametrize("status", ["pendente", "concluida"])
+def test_status_filter_without_matches_returns_empty_list(client, status):
+    task_id = client.post("/tarefas", json={"titulo": "Tarefa"}).json()["id"]
+    if status == "pendente":
+        client.patch(f"/tarefas/{task_id}/concluir")
+    response = client.get("/tarefas", params={"status": status})
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_openapi_documents_completion_and_optional_enum_filter(client):
+    schema = client.get("/openapi.json").json()
+    completion = schema["paths"]["/tarefas/{task_id}/concluir"]["patch"]
+    assert "requestBody" not in completion
+    assert {"200", "404", "422"} <= set(completion["responses"])
+    parameters = schema["paths"]["/tarefas"]["get"]["parameters"]
+    status = next(parameter for parameter in parameters if parameter["name"] == "status")
+    assert status["in"] == "query" and status["required"] is False
+    assert {"$ref": "#/components/schemas/TaskStatus"} in status["schema"]["anyOf"]
+    assert schema["components"]["schemas"]["TaskStatus"]["enum"] == ["pendente", "concluida"]
