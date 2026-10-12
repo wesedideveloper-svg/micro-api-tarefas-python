@@ -1211,3 +1211,77 @@ Os exemplos por ID pressupõem que a tarefa exista. O Swagger permanece em `http
 **Validação humana:** concluída e aprovada. O usuário confirmou a aprovação humana final da Etapa 2.7, incluindo conclusão de tarefas, filtro por status e testes. Autorizou o commit somente de `app/api/tasks.py`, `app/services/task_service.py`, `app/repositories/task_repository.py`, `tests/test_task_api.py`, `tests/test_task_service.py`, `tests/test_task_repository.py` e `docs/prompts.md`, condicionado à repetição bem-sucedida da suíte completa, `pip check` e `git diff --check`, com a mensagem `feat: adiciona conclusao e filtro de tarefas`. A Etapa 2.8 não foi autorizada nesta solicitação.
 
 **Refinamentos realizados:** reutilizados os testes transacionais existentes para cobrir conclusão, sem repetir sua infraestrutura. A primeira execução da suíte completa passou; não foram necessárias correções adicionais.
+
+## Etapa 2.8.1 — Sugestão local e determinística de prioridade
+
+**Data:** registrado em 12/10/2026.
+
+**Objetivo:** preparar a sugestão local de prioridade por palavras-chave, independente de banco, HTTP ou provedor de IA.
+
+**Prompt original:**
+
+```text
+Estamos iniciando a Etapa 2.8.1 do projeto acadêmico `micro-api-tarefas-python`.
+
+A Etapa 2.7 foi concluída e registrada no commit `479bd1d`, com 236 testes aprovados.
+
+Antes de implementar, leia integralmente `README.md`, `AGENTS.md`, `docs/prompts.md` e os arquivos relevantes da aplicação.
+
+**Objetivo:** implementar exclusivamente uma sugestão local e determinística de prioridade para tarefas, preparando a futura integração com IA.
+
+Requisitos:
+
+1. Criar `app/services/priority_service.py` com uma função ou classe simples que receba título e descrição e retorne um valor de `TaskPriority`: `baixa`, `media` ou `alta`.
+2. Definir regras explícitas, simples e documentadas, baseadas em palavras-chave. A prioridade padrão sugerida será `media` quando não houver correspondência.
+3. Normalizar os textos para comparação sem diferenciar maiúsculas e minúsculas.
+4. Quando houver palavras-chave de prioridades diferentes, aplicar precedência `alta > media > baixa`.
+5. Criar `tests/test_priority_service.py`, cobrindo as três prioridades, ausência de correspondência, textos vazios, descrição opcional e conflitos entre palavras-chave.
+6. Atualizar `docs/prompts.md` com este prompt, decisões técnicas, arquivos alterados, resultados dos testes e validação humana pendente.
+
+Restrições:
+
+- Não integrar API externa ou provedor de IA nesta etapa.
+- Não adicionar dependências.
+- Não modificar o banco de dados, modelos, schemas, Repository, Service existente ou endpoints CRUD.
+- Não criar endpoint de sugestão ainda.
+- Não alterar `README.md` ou `AGENTS.md`.
+- Não realizar commit.
+- Não avançar para a Etapa 2.8.2.
+
+Execute a suíte completa de testes, `pip check`, `git diff --check` e `git status`.
+
+Ao finalizar, apresente os arquivos alterados, as regras de classificação, a quantidade de testes aprovados e eventuais riscos.
+
+Aguarde minha revisão humana antes de realizar qualquer commit.
+```
+
+O prompt foi acompanhado de uma referência ao arquivo `docs/prompts.md` no editor.
+
+**Arquivos criados:** `app/services/priority_service.py` e `tests/test_priority_service.py`. Apenas este documento foi modificado entre os arquivos existentes.
+
+**Decisões técnicas e regras de classificação:**
+
+- Função pura `suggest_priority(titulo: str, descricao: str | None = None) -> TaskPriority`, sem sessão, persistência, rede ou alteração de tarefas.
+- Título e descrição são combinados e normalizados com `casefold()`. A descrição omitida ou `None` equivale a texto vazio. A função também aceita título vazio, conforme o requisito de testes, sem modificar a validação do título nos schemas existentes.
+- A biblioteca padrão `re` extrai palavras inteiras com `\b\w+\b`; pontuação comum e espaços delimitam as palavras. Não são feitas correspondências por trecho dentro de outras palavras.
+- Alta: `urgente`, `emergência`, `emergencia`, `crítico`, `critico`.
+- Média: `importante`, `prazo`, `revisar`.
+- Baixa: `opcional`, `rotina`, `depois`.
+- As regras ficam em `PRIORITY_KEYWORDS`, uma sequência com conjuntos imutáveis, em ordem alta → média → baixa. A primeira categoria com correspondência vence, independentemente da posição da palavra no texto ou do campo de origem.
+- Sem correspondência, incluindo textos vazios ou somente espaços, a função retorna `TaskPriority.MEDIA`.
+- A normalização preserva acentos: as variantes sem acento de emergência e crítico foram cadastradas explicitamente. Não há reconhecimento automático de plurais, flexões ou sinônimos fora da lista.
+- Limitação para revisão: palavras-chave não interpretam negação ou contexto. Por exemplo, `não é urgente` ainda sugere alta. Trata-se de sugestão heurística acadêmica; nenhuma prioridade é aplicada ou salva automaticamente nesta etapa.
+
+**Resultados reais e verificações:**
+
+- Criados 33 casos: onze exemplos para todas as palavras-chave, três casos de correspondência pela descrição, quatro de maiúsculas/pontuação no título, cinco de ausência de correspondência/textos vazios/descrição opcional, seis conflitos de prioridade, três casos sem correspondência em palavras maiores ou plurais e um de determinismo com retorno de enum.
+- Executado `timeout 45s .venv/bin/python -m pytest -q`, fora da restrição que afetou o TestClient anteriormente: **269 testes aprovados em 25,89 s**, incluindo os 236 casos existentes e os 33 novos casos de sugestão local.
+- Um aviso de depreciação interno do Starlette/AnyIO sobre `anyio.abc.BlockingPortal`, sem falhas.
+- `.venv/bin/python -m pip check`: nenhuma incompatibilidade detectada.
+- `git diff --check`: sem erros.
+- `git status --short`: `docs/prompts.md` modificado; `app/services/priority_service.py` e `tests/test_priority_service.py` novos.
+- Nenhuma dependência foi adicionada, nenhuma camada existente foi modificada e nenhum endpoint ou integração externa foi criado. Nenhum commit foi realizado. A Etapa 2.8.2 não foi iniciada.
+
+**Validação humana:** concluída e aprovada. O usuário confirmou a revisão humana final de `app/services/priority_service.py`, `tests/test_priority_service.py` e `docs/prompts.md`, sem correções obrigatórias. A Etapa 2.8.1 foi aprovada para um único commit, condicionado à repetição bem-sucedida da suíte completa, `pip check` e `git diff --check`, com a mensagem `feat: adiciona sugestao local de prioridade`. Somente esses três arquivos foram autorizados; a Etapa 2.8.2 não deve ser iniciada nesta solicitação.
+
+**Refinamentos realizados:** não foram necessárias correções após a primeira execução da suíte completa.
