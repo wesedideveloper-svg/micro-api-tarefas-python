@@ -1819,3 +1819,57 @@ Ao finalizar:
 **Validação humana:** concluída e aprovada em 12/10/2026. O usuário informou que revisou o conteúdo completo de `docs/demonstracao.md` e considerou o roteiro adequado, sem necessidade de alterações obrigatórias. Autorizou o registro da etapa e o commit exclusivamente de `docs/demonstracao.md` e `docs/prompts.md`, com a mensagem `docs: adiciona roteiro de demonstracao academica`.
 
 **Refinamentos realizados:** nenhum; o roteiro aprovado foi preservado sem alterações na preparação do commit. A próxima etapa depende de confirmação do usuário.
+
+## Finalização — Etapa 1: Licença MIT
+
+**Data:** 14/10/2026.
+
+**Objetivo:** adicionar a licença MIT ao projeto e documentar sua adoção, sem alterar a API.
+
+**Prompt original:**
+
+```text
+Vamos finalizar o projeto micro-api-tarefas-python.
+
+Nesta primeira etapa, precisamos adicionar somente o arquivo de licença MIT.
+
+Instruções:
+
+1. Verifique o estado atual do repositório Git.
+2. Confirme se já existe um arquivo LICENSE.
+3. Caso não exista, crie na raiz do projeto o arquivo LICENSE com o texto oficial completo da licença MIT.
+4. Utilize:
+   - Ano: 2026
+   - Copyright: Wesley Correa
+5. Adicione ao README.md uma seção curta informando que o projeto está sob a licença MIT, com link relativo para LICENSE, somente se essa seção ainda não existir.
+6. Registre esta solicitação em docs/prompts.md, seguindo o padrão existente.
+
+Validação:
+- Execute git diff --check.
+- Apresente o conteúdo do LICENSE e o diff dos arquivos alterados.
+- Confirme que nenhum arquivo de código-fonte ou teste foi modificado.
+
+Restrições:
+- Não altere funcionalidades, dependências ou configurações da API.
+- Não execute a suíte completa de testes.
+- Não crie commit.
+- Não execute push.
+- Não crie tags ou releases.
+- Aguarde minha revisão e autorização.
+```
+
+**Resultado obtido:**
+
+- Verificado o estado inicial do Git: árvore de trabalho limpa na branch `master`, acompanhando `origin/master`.
+- Confirmada a ausência de `LICENSE` e de seção de licença no README.
+- Criado `LICENSE` na raiz com o texto completo da licença MIT, conferido na Open Source Initiative (https://opensource.org/license/mit), e `Copyright (c) 2026 Wesley Correa`.
+- Acrescentada uma seção curta no README com link relativo para `LICENSE`; ajustadas duas afirmações que tratavam a licença como ausente ou melhoria futura.
+- Registrada esta solicitação seguindo o padrão existente, preservando o conteúdo anterior deste arquivo.
+- Executado `git diff --check` com sucesso; conteúdo de LICENSE e diff dos três arquivos apresentados para revisão.
+- Nenhum arquivo de código-fonte, teste, dependência ou configuração da API foi modificado. Não foram executados testes, commits, push, tags ou releases.
+
+**Validação humana:** concluída e aprovada em 14/10/2026. O usuário autorizou um único commit exclusivamente de `LICENSE`, `README.md` e `docs/prompts.md`, com a mensagem `docs: adiciona licenca MIT ao projeto`, exigindo confirmação de `Copyright (c) 2026 Wesley Correa Barbosa` em LICENSE e execução de `git diff --check`. Não autorizou push, tag ou release.
+
+**Refinamentos realizados:** corrigidas as referências desatualizadas à ausência de licença no README para manter a documentação consistente com LICENSE.
+
+- Na preparação do commit autorizado, confirmado que LICENSE já contém `Copyright (c) 2026 Wesley Correa Barbosa`, conforme solicitado na revisão humana. O nome do prompt original foi preservado como registro histórico.

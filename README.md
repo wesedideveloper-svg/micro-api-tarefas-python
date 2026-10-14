@@ -338,9 +338,9 @@ A assistência no desenvolvimento é distinta da funcionalidade de sugestão: es
 - Uma falha de leitura/refresh após commit pode retornar 500 mesmo com a operação de escrita já confirmada.
 - A classificação por IA não é determinística; o fallback é limitado às palavras-chave documentadas.
 - A prioridade sugerida não é aplicada automaticamente; o usuário decide se deseja utilizá-la ao criar ou atualizar uma tarefa.
-- Não há pipeline CI ou licença de distribuição definidos nesta entrega.
+- Não há pipeline CI definido nesta entrega.
 
-Possíveis melhorias futuras incluem validação em ambiente limpo, fixação das dependências transitivas, pipeline de testes, definição de licença e versão de entrega. Autenticação, paginação e migrações exigem novas etapas de requisitos e revisão; não fazem parte das funcionalidades atuais.
+Possíveis melhorias futuras incluem validação em ambiente limpo, fixação das dependências transitivas, pipeline de testes e versão de entrega. Autenticação, paginação e migrações exigem novas etapas de requisitos e revisão; não fazem parte das funcionalidades atuais.
 
 ## Roteiro básico de demonstração
 
@@ -354,3 +354,7 @@ Possíveis melhorias futuras incluem validação em ambiente limpo, fixação da
 8. Executar os testes e mostrar os resultados efetivamente obtidos, além do registro de revisão humana.
 
 Se desejar separar dados da demonstração, utilize um novo arquivo via `DATABASE_URL`, sem apagar o banco de desenvolvimento. Não é necessário fazer chamadas reais à OpenAI para apresentar o fluxo, o fallback ou os testes da integração.
+
+## Licença
+
+Este projeto está sob a [licença MIT](LICENSE).
